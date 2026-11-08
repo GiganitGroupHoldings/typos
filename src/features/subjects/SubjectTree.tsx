@@ -10,7 +10,7 @@ import { useBoardsOf, useNotesOf, usePinsOf, useSubjects, useToolsOf } from "@/v
 import { tabOfPath } from "./tabs"
 import { SubjectBadge } from "./visuals"
 
-const ROW = 30
+const ROW = 44
 
 function TraceLine({ index, last }: { index: number; last: boolean }) {
   const mid = ROW / 2
@@ -55,7 +55,7 @@ function SubjectNode({ subject }: { subject: Subject }) {
   return (
     <motion.li layout="position" transition={spring} className="relative list-none">
       <div className="group/row flex items-center">
-        <SidebarMenuButton asChild isActive={active && pathname === `/s/${subject.id}`} className="h-9 pr-8">
+        <SidebarMenuButton asChild isActive={active && pathname === `/s/${subject.id}`} className="pr-12">
           <Link to={`/s/${subject.id}`} onClick={() => setOpen(true)}>
             <SubjectBadge subject={subject} size="sm" />
             <span className="font-medium">{subject.name}</span>
@@ -66,10 +66,10 @@ function SubjectNode({ subject }: { subject: Subject }) {
           aria-label={open ? `Свернуть «${subject.name}»` : `Развернуть «${subject.name}»`}
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
-          className="absolute top-1 right-1 flex size-7 items-center justify-center rounded-md text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:outline-none"
+          className="absolute top-0 right-0 flex size-11 items-center justify-center rounded-lg text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:outline-none"
         >
           <motion.span animate={{ rotate: open ? 90 : 0 }} transition={spring} className="flex">
-            <ChevronRight className="size-4" />
+            <ChevronRight className="size-5" />
           </motion.span>
         </button>
       </div>
@@ -93,14 +93,14 @@ function SubjectNode({ subject }: { subject: Subject }) {
                     to={`/s/${subject.id}?tab=${s.tab}`}
                     data-active={isCurrent || undefined}
                     className={cn(
-                      "ml-8 flex h-full items-center gap-2 rounded-md px-2 text-[13px] text-sidebar-foreground outline-none",
+                      "ml-8 flex h-full items-center gap-2.5 rounded-lg px-2 text-[15px] text-sidebar-foreground outline-none",
                       "hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring",
                       "data-active:bg-sidebar-accent data-active:font-medium data-active:text-sidebar-foreground",
                     )}
                   >
-                    <Icon className="size-3.5 opacity-70" />
+                    <Icon className="size-[18px] shrink-0 opacity-70" />
                     <span className="flex-1 truncate">{s.label}</span>
-                    <span className="text-xs text-sidebar-foreground tabular-nums">{counts[s.tab]}</span>
+                    <span className="shrink-0 text-[13px] text-sidebar-foreground tabular-nums">{counts[s.tab]}</span>
                   </Link>
                 </li>
               )

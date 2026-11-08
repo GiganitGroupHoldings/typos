@@ -41,11 +41,16 @@ export function SubjectHome() {
   const tab = params.get("tab")
 
   return (
-    <motion.div {...pageEnter} {...drop.handlers} style={subjectStyle(subject)} className="mx-auto w-full max-w-5xl px-6 py-10 md:px-10">
-      <header className="flex items-center gap-4">
+    <motion.div
+      {...pageEnter}
+      {...drop.handlers}
+      style={subjectStyle(subject)}
+      className="mx-auto w-full max-w-5xl py-8 pr-[max(1rem,var(--safe-right))] pl-[max(1rem,var(--safe-left))] md:px-10 md:py-10"
+    >
+      <header className="flex flex-wrap items-center gap-3 md:gap-4">
         <SubjectBadge subject={subject} size="lg" />
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-[32px] leading-tight font-bold tracking-tight">{subject.name}</h1>
+          <h1 className="truncate text-[26px] leading-tight font-bold tracking-tight md:text-[32px]">{subject.name}</h1>
           <p className="text-[15px] text-muted-foreground">{plural(notes.length, ["конспект", "конспекта", "конспектов"])}</p>
         </div>
         <SubjectActions subject={subject} />
@@ -209,7 +214,7 @@ function Tile({
 
       className={cn(
         lens.className,
-        "rounded-[var(--radius-surface)] p-5 outline-2 outline-transparent transition-[outline-color] duration-(--dur-slow)",
+        "rounded-[var(--radius-surface)] p-4 outline-2 outline-transparent transition-[outline-color] duration-(--dur-slow) md:p-5",
         highlight && "outline-(--subject)/50",
         className,
       )}
@@ -222,7 +227,7 @@ function Tile({
             key={action.label}
             type="button"
             onClick={action.onClick}
-            className="flex items-center gap-1 rounded-md px-2 py-1 text-[13px] font-medium tracking-normal normal-case hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none [&_svg]:size-3.5"
+            className="flex min-h-9 items-center gap-1 rounded-md px-2 py-1 text-[13px] font-medium tracking-normal normal-case hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none [&_svg]:size-3.5"
           >
             {action.icon}
             {action.label}

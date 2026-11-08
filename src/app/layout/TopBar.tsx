@@ -1,5 +1,5 @@
-import { ChevronRight, Focus, Pin, Search } from "lucide-react"
-import { Link, useParams } from "react-router"
+import { ArrowLeft, ChevronRight, Focus, List as ListIcon, Pin, Search } from "lucide-react"
+import { Link, useLocation, useNavigate, useParams } from "react-router"
 import { useUi } from "@/app/store"
 import { Button } from "@/components/ui/Button"
 import { Kbd } from "@/components/ui/Kbd"
@@ -22,23 +22,44 @@ export function TopBar() {
   const focusMode = useUi((s) => s.focusMode)
   const toggleFocus = useUi((s) => s.toggleFocus)
   const setPaletteOpen = useUi((s) => s.setPaletteOpen)
+  const setListOpen = useUi((s) => s.setListOpen)
   const lens = useLiquidLens({ fallback: "liquid liquid-lava" })
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
+  const backTarget = subject ? (note || tool || board ? `/s/${subject.id}` : "/") : pathname === "/" ? null : "/"
 
   return (
-    <div data-tauri-drag-region className="flex h-12 shrink-0 items-center gap-1 px-2">
+    <div
+      data-tauri-drag-region
+      className="flex h-14 shrink-0 items-center gap-1 pl-[max(0.5rem,var(--safe-left))] pr-[max(0.5rem,var(--safe-right))] md:h-12"
+    >
+      {backTarget && (
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Назад"
+          className="size-11 rounded-full md:hidden"
+          onClick={() => navigate(backTarget)}
+        >
+          <ArrowLeft />
+        </Button>
+      )}
+
       <Tooltip>
         <TooltipTrigger asChild>
-          <SidebarTrigger aria-label="Показать или скрыть предметы" />
+          <SidebarTrigger aria-label="Показать или скрыть предметы" className={cn("max-md:size-11", subject && "max-md:hidden")} />
         </TooltipTrigger>
         <TooltipContent className="flex items-center gap-2">
           Предметы <Kbd>Ctrl B</Kbd>
         </TooltipContent>
       </Tooltip>
 
+      <span className="min-w-0 flex-1 truncate px-1 text-[15px] font-semibold md:hidden">{leaf ?? subject?.name ?? ""}</span>
+
       <nav
         data-tauri-drag-region
         aria-label="Путь"
-        className="flex min-w-0 flex-1 items-center gap-1 px-1 text-[13px] text-muted-foreground"
+        className="hidden min-w-0 flex-1 items-center gap-1 px-1 text-[13px] text-muted-foreground md:flex"
       >
         {subject ? (
           <>
@@ -60,6 +81,18 @@ export function TopBar() {
         ) : null}
       </nav>
 
+      {subject && (
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Содержание предмета"
+          className="size-11 rounded-full md:hidden"
+          onClick={() => setListOpen(true)}
+        >
+          <ListIcon />
+        </Button>
+      )}
+
       <div className={cn(lens.className, "flex items-center gap-0.5 rounded-full p-1")}>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -67,7 +100,7 @@ export function TopBar() {
               variant="ghost"
               size="icon-sm"
               aria-label="Поиск"
-              className="rounded-full hover:bg-foreground/5"
+              className="size-11 rounded-full hover:bg-foreground/5 md:size-7"
               onClick={() => setPaletteOpen(true)}
             >
               <Search />
@@ -85,7 +118,7 @@ export function TopBar() {
               aria-label="Режим фокуса"
               aria-pressed={focusMode}
               onClick={toggleFocus}
-              className={cn("rounded-full hover:bg-foreground/5", focusMode && "liquid-active hover:bg-transparent")}
+              className={cn("rounded-full hover:bg-foreground/5 max-md:hidden", focusMode && "liquid-active hover:bg-transparent")}
             >
               <Focus />
             </Button>
@@ -102,7 +135,7 @@ export function TopBar() {
               aria-label="Закреп"
               aria-pressed={pinsOpen}
               onClick={togglePins}
-              className={cn("rounded-full hover:bg-foreground/5", pinsOpen && "liquid-active hover:bg-transparent")}
+              className={cn("size-11 rounded-full hover:bg-foreground/5 md:size-7", pinsOpen && "liquid-active hover:bg-transparent")}
             >
               <Pin />
             </Button>

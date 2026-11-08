@@ -1,5 +1,6 @@
 import { create } from "zustand"
 import { createJSONStorage, persist } from "zustand/middleware"
+import { normalizeNoteSize, type NoteSize } from "@/lib/noteSize"
 import { normalizeZoom } from "./zoomValue"
 
 export type ThemePref = "light" | "dark" | "system"
@@ -20,6 +21,7 @@ export interface FloatingWindow {
 interface UiState {
   theme: ThemePref
   noteFont: NoteFont
+  noteSize: NoteSize
   backdrop: Backdrop
   responsiveAccent: boolean
   fixedAccent: string
@@ -33,6 +35,7 @@ interface UiState {
   focusMode: boolean
   pinsOpen: boolean
   paletteOpen: boolean
+  listOpen: boolean
 
   phonePreview: boolean
 
@@ -42,11 +45,13 @@ interface UiState {
   cycleTheme: () => void
   toggleBackdrop: () => void
   setNoteFont: (f: NoteFont) => void
+  setNoteSize: (s: NoteSize) => void
   toggleReading: () => void
   toggleFocus: () => void
   setPinsOpen: (v: boolean) => void
   togglePins: () => void
   setPaletteOpen: (v: boolean) => void
+  setListOpen: (v: boolean) => void
   togglePhone: () => void
   setMapMode: (v: boolean) => void
   openWindow: (kind: FloatingWindow["kind"], refId: string) => void
@@ -77,6 +82,7 @@ export const useUi = create<UiState>()(
     (set) => ({
       theme: "light",
       noteFont: "inter",
+      noteSize: "m",
       backdrop: "nebula",
       responsiveAccent: true,
       fixedAccent: "#5078d4",
@@ -91,6 +97,7 @@ export const useUi = create<UiState>()(
       focusMode: false,
       pinsOpen: false,
       paletteOpen: false,
+      listOpen: false,
       phonePreview: false,
       mapMode: false,
       windows: [],
@@ -98,11 +105,13 @@ export const useUi = create<UiState>()(
       cycleTheme: () => set((s) => ({ theme: order[(order.indexOf(s.theme) + 1) % order.length] })),
       toggleBackdrop: () => set((s) => ({ backdrop: s.backdrop === "metal" ? "nebula" : "metal" })),
       setNoteFont: (noteFont) => set({ noteFont }),
+      setNoteSize: (noteSize) => set({ noteSize: normalizeNoteSize(noteSize) }),
       toggleReading: () => set((s) => ({ readingMode: !s.readingMode })),
       toggleFocus: () => set((s) => ({ focusMode: !s.focusMode })),
       setPinsOpen: (pinsOpen) => set({ pinsOpen }),
       togglePins: () => set((s) => ({ pinsOpen: !s.pinsOpen })),
       setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
+      setListOpen: (listOpen) => set({ listOpen }),
       togglePhone: () => set((s) => ({ phonePreview: !s.phonePreview })),
       setMapMode: (mapMode) => set({ mapMode }),
       openWindow: (kind, refId) =>
@@ -127,6 +136,7 @@ export const useUi = create<UiState>()(
       partialize: (s) => ({
         theme: s.theme,
         noteFont: s.noteFont,
+        noteSize: s.noteSize,
         backdrop: s.backdrop,
         phonePreview: s.phonePreview,
         responsiveAccent: s.responsiveAccent,
@@ -138,16 +148,18 @@ export const useUi = create<UiState>()(
         return {
           ...current,
           ...saved,
+          noteSize: normalizeNoteSize(saved.noteSize),
           responsiveAccent: typeof saved.responsiveAccent === "boolean" ? saved.responsiveAccent : true,
           fixedAccent: typeof saved.fixedAccent === "string" && /^#[0-9a-f]{6}$/i.test(saved.fixedAccent) ? saved.fixedAccent : "#5078d4",
           desktopZoom: normalizeZoom(saved.desktopZoom ?? 100),
         }
       },
 
-      version: 1,
+      version: 2,
       migrate: (persisted, version) => {
-        const s = (persisted ?? {}) as Partial<Pick<UiState, "theme" | "noteFont" | "backdrop">>
+        const s = (persisted ?? {}) as Partial<Pick<UiState, "theme" | "noteFont" | "noteSize" | "backdrop">>
         if (version < 1 && (!s.theme || s.theme === "system")) s.theme = "light"
+        if (version < 2) s.noteSize = normalizeNoteSize(s.noteSize)
         return s as UiState
       },
     },

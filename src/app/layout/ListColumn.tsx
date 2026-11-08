@@ -1,5 +1,6 @@
 import { ChevronDown, FileDown, FileUp, LayoutDashboard, Maximize2, Plus, SquarePen } from "lucide-react"
 import { motion } from "motion/react"
+import { useEffect } from "react"
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router"
 import { useUi } from "@/app/store"
 import { Button } from "@/components/ui/Button"
@@ -12,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/DropdownMenu"
 import { Kbd } from "@/components/ui/Kbd"
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/Sheet"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/Tooltip"
 import { BoardActions } from "@/features/boards/BoardActions"
 import { boardText } from "@/features/boards/model"
@@ -127,7 +129,7 @@ function CreateButton({ subject, tab }: { subject: Subject; tab: SubjectTab }) {
   )
 }
 
-export function ListColumn() {
+function SubjectList({ className, onNavigate }: { className?: string; onNavigate?: () => void }) {
   const { subjectId, noteId, toolId, boardId } = useParams()
   const subject = useSubject(subjectId)
   const notes = useNotesOf(subjectId)
@@ -143,13 +145,12 @@ export function ListColumn() {
   if (!subject) return null
 
   return (
-    <aside
-      aria-label={`Содержимое предмета «${subject.name}»`}
+    <div
       {...drop.handlers}
-      className={cn(
-        "liquid-column-soft relative hidden w-[300px] shrink-0 flex-col border-r md:flex",
-        drop.over && "ring-2 ring-highlight ring-inset",
-      )}
+      onClickCapture={(e) => {
+        if (onNavigate && (e.target as HTMLElement).closest("a[href]")) onNavigate()
+      }}
+      className={cn("liquid-column-soft relative flex h-full flex-col", drop.over && "ring-2 ring-highlight ring-inset", className)}
     >
       <header className="flex items-center gap-2.5 px-4 pt-4 pb-3">
         <SubjectBadge subject={subject} />
@@ -189,6 +190,7 @@ export function ListColumn() {
                 data-ui-hover="sidebar-row"
                 to={`/s/${subject.id}/n/${n.id}`}
                 viewTransition
+                onClick={onNavigate}
                 data-active={noteId === n.id || undefined}
                 className="min-w-0 flex-1 rounded-lg px-3 py-2.5 outline-none focus-visible:ring-2 focus-visible:ring-ring data-active:bg-accent"
               >
@@ -251,6 +253,7 @@ export function ListColumn() {
                   data-ui-hover="sidebar-row"
                   to={`/s/${subject.id}/t/${t.id}`}
                   viewTransition
+                  onClick={onNavigate}
                   data-active={toolId === t.id || undefined}
                   className="flex items-center gap-3 rounded-lg py-2.5 pr-10 pl-3 outline-none focus-visible:ring-2 focus-visible:ring-ring data-active:bg-accent"
                 >
@@ -277,6 +280,7 @@ export function ListColumn() {
                 data-ui-hover="sidebar-row"
                 to={`/s/${subject.id}/b/${b.id}`}
                 viewTransition
+                onClick={onNavigate}
                 data-active={boardId === b.id || undefined}
                 className="flex items-center gap-3 rounded-lg py-2.5 pr-10 pl-3 outline-none focus-visible:ring-2 focus-visible:ring-ring data-active:bg-accent"
               >
@@ -309,7 +313,35 @@ export function ListColumn() {
           Импорт файлов
         </div>
       )}
+    </div>
+  )
+}
+
+export function ListColumn() {
+  return (
+    <aside aria-label="Содержимое предмета" className="hidden w-[300px] shrink-0 border-r md:flex">
+      <SubjectList className="w-full" />
     </aside>
+  )
+}
+
+export function SubjectListSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+  const { pathname } = useLocation()
+
+  // Список закрывается после перехода к конспекту, но остаётся открытым при смене вкладки.
+  // oxlint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => onOpenChange(false), [pathname])
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="left" aria-describedby={undefined} className="w-[88vw] max-w-[340px] gap-0 p-0 pt-8 md:hidden">
+        <SheetHeader className="sr-only">
+          <SheetTitle>Содержание предмета</SheetTitle>
+          <SheetDescription>Конспекты, закреп, проекты и доски</SheetDescription>
+        </SheetHeader>
+        <SubjectList className="h-full" onNavigate={() => onOpenChange(false)} />
+      </SheetContent>
+    </Sheet>
   )
 }
 

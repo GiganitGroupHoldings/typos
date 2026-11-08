@@ -64,9 +64,9 @@ export function AppSidebar() {
         <button
           type="button"
           onClick={() => setPaletteOpen(true)}
-          className="liquid-2 flex h-9 items-center gap-2 rounded-xl px-3 text-sm text-sidebar-foreground transition-colors duration-(--dur-fast) hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:outline-none"
+          className="liquid-2 flex h-11 items-center gap-2.5 rounded-xl px-3 text-base text-sidebar-foreground transition-colors duration-(--dur-fast) hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:outline-none"
         >
-          <Search className="size-4" />
+          <Search className="size-5" />
           <span className="flex-1 text-left">Поиск</span>
           <Kbd>Ctrl K</Kbd>
         </button>
@@ -89,8 +89,13 @@ export function AppSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel>Предметы</SidebarGroupLabel>
-          <SidebarGroupAction title="Новый предмет" aria-label="Новый предмет" onClick={openNewSubject}>
+          <SidebarGroupLabel className="h-11 text-sm">Предметы</SidebarGroupLabel>
+          <SidebarGroupAction
+            className="top-2 right-2 size-11 [&>svg]:size-5"
+            title="Новый предмет"
+            aria-label="Новый предмет"
+            onClick={openNewSubject}
+          >
             <Plus />
           </SidebarGroupAction>
           <SidebarGroupContent>

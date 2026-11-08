@@ -736,7 +736,7 @@ function MapBlock({
                 aria-label="Протянуть стрелку"
                 onPointerDown={(e) => onHandleDown(e, side)}
                 style={{ left: p.x, top: p.y }}
-                className="pointer-events-auto absolute -mt-[7px] -ml-[7px] size-[14px] cursor-crosshair rounded-full border-2 border-background bg-highlight shadow-card transition-transform hover:scale-125"
+                className="pointer-events-auto absolute -mt-[7px] -ml-[7px] size-[14px] cursor-crosshair rounded-full border-2 border-background bg-highlight shadow-card transition-transform after:absolute after:-inset-3 after:content-[''] hover:scale-125"
               />
             )
           })}
@@ -745,7 +745,7 @@ function MapBlock({
               role="button"
               aria-label="Изменить размер"
               onPointerDown={onResizeDown}
-              className="pointer-events-auto absolute -right-1 -bottom-1 size-3 cursor-nwse-resize rounded-[4px] border-2 border-background bg-highlight"
+              className="pointer-events-auto absolute -right-1 -bottom-1 size-3 cursor-nwse-resize rounded-[4px] border-2 border-background bg-highlight after:absolute after:-inset-3 after:content-['']"
             />
           )}
         </div>
@@ -814,7 +814,7 @@ function MapHint() {
 
       className={cn(
         lens.className,
-        "pointer-events-none fixed bottom-5 left-1/2 z-30 -translate-x-1/2 rounded-full px-4 py-2 text-[12.5px] whitespace-nowrap text-muted-foreground",
+        "pointer-events-none fixed bottom-[calc(4.5rem+var(--safe-bottom))] left-1/2 z-30 -translate-x-1/2 rounded-full px-4 py-2 text-[12.5px] whitespace-nowrap text-muted-foreground md:bottom-5",
       )}
     >
       <span>Потяни по фону, чтобы добавить блок. Esc для выхода.</span>

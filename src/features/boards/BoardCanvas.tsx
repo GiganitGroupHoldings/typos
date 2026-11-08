@@ -1222,7 +1222,7 @@ const NodeView = memo(function NodeView({
                 role="button"
                 aria-label="Протянуть стрелку"
                 className={cn(
-                  "pointer-events-auto absolute size-[calc(12px*var(--inv))] -translate-x-1/2 -translate-y-1/2 cursor-crosshair rounded-full border-[calc(2px*var(--inv))] border-background bg-highlight shadow-card",
+                  "pointer-events-auto absolute size-[calc(12px*var(--inv))] -translate-x-1/2 -translate-y-1/2 cursor-crosshair rounded-full border-[calc(2px*var(--inv))] border-background bg-highlight shadow-card after:absolute after:-inset-3 after:content-['']",
                   !group && HANDLE_POS[side],
                 )}
               />
@@ -1238,7 +1238,7 @@ const NodeView = memo(function NodeView({
           data-resize=""
           role="button"
           aria-label="Изменить размер"
-          className="pointer-events-auto absolute size-[calc(12px*var(--inv))] -translate-x-1/2 -translate-y-1/2 cursor-nwse-resize rounded-[calc(3px*var(--inv))] border-[calc(2px*var(--inv))] border-background bg-highlight"
+          className="pointer-events-auto absolute size-[calc(12px*var(--inv))] -translate-x-1/2 -translate-y-1/2 cursor-nwse-resize rounded-[calc(3px*var(--inv))] border-[calc(2px*var(--inv))] border-background bg-highlight after:absolute after:-inset-3 after:content-['']"
         />
       )}
     </div>

@@ -19,7 +19,7 @@ import { useSubject } from "@/vault/hooks"
 import { useVault } from "@/vault/store"
 import { AppSidebar } from "./AppSidebar"
 import { ConnectionBanner } from "./ConnectionBanner"
-import { ListColumn } from "./ListColumn"
+import { ListColumn, SubjectListSheet } from "./ListColumn"
 import { Nebula } from "./Nebula"
 import { TopBar } from "./TopBar"
 
@@ -80,6 +80,8 @@ export function AppShell() {
   useAccentSync(useSubject(subjectId)?.color)
   const { pathname } = useLocation()
   const focusMode = useUi((s) => s.focusMode)
+  const listOpen = useUi((s) => s.listOpen)
+  const setListOpen = useUi((s) => s.setListOpen)
 
   return (
     <SidebarProvider className="h-dvh overflow-hidden">
@@ -96,13 +98,14 @@ export function AppShell() {
             <TopBar />
           </div>
           <ConnectionBanner />
-          <div key={pathname} className="thin-scrollbar min-h-0 flex-1 overflow-y-auto pt-12">
+          <div key={pathname} className="thin-scrollbar app-scroll min-h-0 flex-1 overflow-y-auto pt-14 md:pt-12">
             <Outlet />
           </div>
           <PinsDrawer />
         </div>
       </SidebarInset>
       <FloatingWindows />
+      {subjectId && <SubjectListSheet open={listOpen} onOpenChange={setListOpen} />}
       <CommandPalette />
       <NewSubjectDialog />
       <PinEditorDialog />

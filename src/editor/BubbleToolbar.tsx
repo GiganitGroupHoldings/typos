@@ -218,7 +218,10 @@ export function BubbleToolbar({
           style={{
             background: "linear-gradient(rgb(0 0 0 / 0.5), rgb(0 0 0 / 0.5)), linear-gradient(var(--lens-tint), var(--lens-tint))",
           }}
-          className={cn(lens.className, "flex items-center gap-0.5 rounded-2xl p-1")}
+          className={cn(
+            lens.className,
+            "flex max-w-[calc(100vw-24px)] items-center gap-0.5 overflow-x-auto rounded-2xl p-1 no-scrollbar [&>button]:shrink-0 [&>div]:shrink-0",
+          )}
         >
           <ToolbarMouse.Provider value={mouseX}>
             <ToolbarButton
@@ -301,7 +304,7 @@ export function BubbleToolbar({
               initial={{ opacity: 0, y: -4, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1, transition: { type: "spring", stiffness: 520, damping: 34 } }}
               exit={{ opacity: 0, y: -4, transition: { duration: 0.12 } }}
-              className="glass absolute top-full left-0 mt-1.5 rounded-[0.875rem] p-1.5"
+              className="glass absolute top-full left-0 mt-1.5 max-w-[calc(100vw-24px)] overflow-x-auto rounded-[0.875rem] p-1.5"
             >
               {panel === "turn" && (
                 <ul role="menu" aria-label="Превратить в" className="w-56">

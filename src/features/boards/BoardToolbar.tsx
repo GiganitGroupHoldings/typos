@@ -43,7 +43,7 @@ function Glass({ children }: { children: ReactNode }) {
     <div
       onPointerDown={(e) => e.stopPropagation()}
       onDoubleClick={(e) => e.stopPropagation()}
-      className="liquid liquid-lava pointer-events-auto flex items-center gap-0.5 rounded-full p-1 shadow-float"
+      className="liquid liquid-lava pointer-events-auto flex flex-wrap items-center justify-center gap-0.5 rounded-2xl p-1 shadow-float [&>*]:shrink-0 md:flex-nowrap md:rounded-full"
     >
       {children}
     </div>
@@ -72,7 +72,7 @@ function IconButton({
           aria-pressed={active}
           onClick={onClick}
           className={cn(
-            "flex size-8 items-center justify-center rounded-full outline-none hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring [&_svg]:size-4",
+            "flex size-8 items-center justify-center rounded-full outline-none hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring max-md:size-10 [&_svg]:size-4",
             active && "liquid-active hover:bg-transparent",
           )}
         >
@@ -117,51 +117,53 @@ export function BoardToolbar({
   onRedo: () => void
 }) {
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-4 z-10 flex justify-center px-4">
-      <Glass>
-        {TOOLS.map((t) => (
-          <IconButton key={t.id} label={t.label} hint={t.key} active={tool === t.id} onClick={() => onTool(t.id)}>
-            <t.icon />
+    <div className="pointer-events-none absolute inset-x-0 bottom-[calc(0.75rem+var(--safe-bottom))] z-10 flex justify-center px-2 md:bottom-4 md:px-4">
+      <div className="pointer-events-auto max-w-full">
+        <Glass>
+          {TOOLS.map((t) => (
+            <IconButton key={t.id} label={t.label} hint={t.key} active={tool === t.id} onClick={() => onTool(t.id)}>
+              <t.icon />
+            </IconButton>
+          ))}
+          <IconButton label="Картинка" onClick={onImage}>
+            <ImagePlus />
           </IconButton>
-        ))}
-        <IconButton label="Картинка" onClick={onImage}>
-          <ImagePlus />
-        </IconButton>
-        <IconButton label="Добавить ссылку" onClick={onLink}>
-          <Link2 />
-        </IconButton>
-        <Divider />
-        <IconButton label="Отменить" hint="Ctrl Z" onClick={onUndo}>
-          <Undo2 />
-        </IconButton>
-        <IconButton label="Вернуть" hint="Ctrl Shift Z" onClick={onRedo}>
-          <Redo2 />
-        </IconButton>
-        <Divider />
-        <IconButton label="Уменьшить масштаб" hint="Ctrl и колесо" onClick={() => onZoom(1 / 1.25)}>
-          <ZoomOut />
-        </IconButton>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              onClick={() => onZoom("reset")}
-              className="h-8 w-12 rounded-full text-[12px] font-medium tabular-nums outline-none hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              {Math.round(zoom * 100)}%
-            </button>
-          </TooltipTrigger>
-          <TooltipContent className="flex items-center gap-2">
-            Масштаб 100% <Kbd>Shift 0</Kbd>
-          </TooltipContent>
-        </Tooltip>
-        <IconButton label="Увеличить масштаб" hint="Ctrl и колесо" onClick={() => onZoom(1.25)}>
-          <ZoomIn />
-        </IconButton>
-        <IconButton label="Показать всё" hint="Shift 1" onClick={onFit}>
-          <Scan />
-        </IconButton>
-      </Glass>
+          <IconButton label="Добавить ссылку" onClick={onLink}>
+            <Link2 />
+          </IconButton>
+          <Divider />
+          <IconButton label="Отменить" hint="Ctrl Z" onClick={onUndo}>
+            <Undo2 />
+          </IconButton>
+          <IconButton label="Вернуть" hint="Ctrl Shift Z" onClick={onRedo}>
+            <Redo2 />
+          </IconButton>
+          <Divider />
+          <IconButton label="Уменьшить масштаб" hint="Ctrl и колесо" onClick={() => onZoom(1 / 1.25)}>
+            <ZoomOut />
+          </IconButton>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => onZoom("reset")}
+                className="h-8 w-12 rounded-full text-[12px] font-medium tabular-nums outline-none hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring max-md:h-10"
+              >
+                {Math.round(zoom * 100)}%
+              </button>
+            </TooltipTrigger>
+            <TooltipContent className="flex items-center gap-2">
+              Масштаб 100% <Kbd>Shift 0</Kbd>
+            </TooltipContent>
+          </Tooltip>
+          <IconButton label="Увеличить масштаб" hint="Ctrl и колесо" onClick={() => onZoom(1.25)}>
+            <ZoomIn />
+          </IconButton>
+          <IconButton label="Показать всё" hint="Shift 1" onClick={onFit}>
+            <Scan />
+          </IconButton>
+        </Glass>
+      </div>
     </div>
   )
 }
@@ -194,72 +196,74 @@ export function SelectionBar({
 }) {
   const ends = edge ? `${edge.fromEnd === "arrow" ? "both" : edge.toEnd === "none" ? "none" : "end"}` : null
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center px-4">
-      <Glass>
-        <button
-          type="button"
-          aria-label="Без цвета"
-          aria-pressed={!color}
-          onClick={() => onColor(undefined)}
-          className="flex size-8 items-center justify-center rounded-full outline-none hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <span
-            className={cn(
-              "size-4 rounded-full border-2 border-muted-foreground/50 bg-card",
-              !color && "ring-2 ring-highlight ring-offset-1",
-            )}
-          />
-        </button>
-        {BOARD_COLORS.map((c) => (
-          <Tooltip key={c}>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                aria-label={BOARD_COLOR_LABELS[c]}
-                aria-pressed={color === c}
-                onClick={() => onColor(c)}
-                className="flex size-8 items-center justify-center rounded-full outline-none hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <span
-                  style={{ background: swatch(c) }}
-                  className={cn("size-4 rounded-full", color === c && "ring-2 ring-highlight ring-offset-1 ring-offset-background")}
-                />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>{BOARD_COLOR_LABELS[c]}</TooltipContent>
-          </Tooltip>
-        ))}
-        <Divider />
-        {frameShape &&
-          FRAME_SHAPES.map((s) => (
-            <IconButton key={s.id} label={s.label} active={frameShape === s.id} onClick={() => onFrameShape(s.id)}>
-              <s.icon />
-            </IconButton>
+    <div className="pointer-events-none absolute inset-x-0 top-[calc(0.75rem+var(--safe-top))] z-10 flex justify-center px-2 md:top-3 md:px-4">
+      <div className="pointer-events-auto max-w-full">
+        <Glass>
+          <button
+            type="button"
+            aria-label="Без цвета"
+            aria-pressed={!color}
+            onClick={() => onColor(undefined)}
+            className="flex size-8 items-center justify-center rounded-full outline-none hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring max-md:size-10"
+          >
+            <span
+              className={cn(
+                "size-4 rounded-full border-2 border-muted-foreground/50 bg-card",
+                !color && "ring-2 ring-highlight ring-offset-1",
+              )}
+            />
+          </button>
+          {BOARD_COLORS.map((c) => (
+            <Tooltip key={c}>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={BOARD_COLOR_LABELS[c]}
+                  aria-pressed={color === c}
+                  onClick={() => onColor(c)}
+                  className="flex size-8 items-center justify-center rounded-full outline-none hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring max-md:size-10"
+                >
+                  <span
+                    style={{ background: swatch(c) }}
+                    className={cn("size-4 rounded-full", color === c && "ring-2 ring-highlight ring-offset-1 ring-offset-background")}
+                  />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{BOARD_COLOR_LABELS[c]}</TooltipContent>
+            </Tooltip>
           ))}
-        {onEditLink && (
-          <IconButton label="Редактировать ссылку" hint="Enter" onClick={onEditLink}>
-            <Link2 />
+          <Divider />
+          {frameShape &&
+            FRAME_SHAPES.map((s) => (
+              <IconButton key={s.id} label={s.label} active={frameShape === s.id} onClick={() => onFrameShape(s.id)}>
+                <s.icon />
+              </IconButton>
+            ))}
+          {onEditLink && (
+            <IconButton label="Редактировать ссылку" hint="Enter" onClick={onEditLink}>
+              <Link2 />
+            </IconButton>
+          )}
+          {onArrows && (
+            <IconButton label="Концы стрелки" onClick={onArrows}>
+              {ends === "both" ? <ArrowLeftRight /> : ends === "none" ? <Minus /> : <ArrowRight />}
+            </IconButton>
+          )}
+          {onFront && (
+            <IconButton label="На передний план" onClick={onFront}>
+              <BringToFront />
+            </IconButton>
+          )}
+          {onDuplicate && (
+            <IconButton label="Дублировать" hint="Ctrl D" onClick={onDuplicate}>
+              <Copy />
+            </IconButton>
+          )}
+          <IconButton label="Удалить" hint="Delete" onClick={onDelete}>
+            <Trash2 />
           </IconButton>
-        )}
-        {onArrows && (
-          <IconButton label="Концы стрелки" onClick={onArrows}>
-            {ends === "both" ? <ArrowLeftRight /> : ends === "none" ? <Minus /> : <ArrowRight />}
-          </IconButton>
-        )}
-        {onFront && (
-          <IconButton label="На передний план" onClick={onFront}>
-            <BringToFront />
-          </IconButton>
-        )}
-        {onDuplicate && (
-          <IconButton label="Дублировать" hint="Ctrl D" onClick={onDuplicate}>
-            <Copy />
-          </IconButton>
-        )}
-        <IconButton label="Удалить" hint="Delete" onClick={onDelete}>
-          <Trash2 />
-        </IconButton>
-      </Glass>
+        </Glass>
+      </div>
     </div>
   )
 }

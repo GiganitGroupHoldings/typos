@@ -6,6 +6,7 @@ import { useUi } from "@/app/store"
 import { Button } from "@/components/ui/Button"
 import { useLiquidLens } from "@/components/ui/LiquidLens"
 import { CARD_LENS } from "@/components/ui/liquidLensOptions"
+import { useIsMobile } from "@/hooks/useIsMobile"
 import { dur, easeIn, springSoft } from "@/lib/motion"
 import { cn } from "@/lib/utils"
 import type { Pin } from "@/types"
@@ -22,6 +23,7 @@ export function PinsDrawer() {
   const open = useUi((s) => s.pinsOpen)
   const setOpen = useUi((s) => s.setPinsOpen)
   const lens = useLiquidLens(CARD_LENS)
+  const mobile = useIsMobile()
 
   useEffect(() => {
     if (!open) return
@@ -36,22 +38,34 @@ export function PinsDrawer() {
         <motion.aside
           key="pins"
           aria-label="Закреп"
-          initial={{ x: 24, opacity: 0 }}
-          animate={{ x: 0, opacity: 1, transition: springSoft }}
-          exit={{ x: 24, opacity: 0, transition: { duration: dur.base * 0.65, ease: easeIn } }}
+          initial={mobile ? { y: 40, opacity: 0 } : { x: 24, opacity: 0 }}
+          animate={mobile ? { y: 0, opacity: 1, transition: springSoft } : { x: 0, opacity: 1, transition: springSoft }}
+          exit={
+            mobile
+              ? { y: 40, opacity: 0, transition: { duration: dur.base * 0.65, ease: easeIn } }
+              : { x: 24, opacity: 0, transition: { duration: dur.base * 0.65, ease: easeIn } }
+          }
           className={cn(
             lens.className,
             "absolute top-14 right-3 bottom-3 z-20 flex w-[min(340px,calc(100%-24px))] flex-col rounded-[var(--radius-surface)]",
+            "max-md:inset-x-0 max-md:top-auto max-md:right-0 max-md:bottom-0 max-md:h-[85dvh] max-md:w-full max-md:rounded-b-none max-md:pb-[var(--safe-bottom)]",
           )}
         >
+          <div aria-hidden className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-border md:hidden" />
           <header className="flex items-center gap-1 border-b py-2 pr-2 pl-4">
             <h2 className="flex-1 truncate text-sm font-semibold">{subject ? subject.name : "Закреп"}</h2>
             {subject && (
-              <Button variant="ghost" size="icon-sm" aria-label="Новый закреп" onClick={() => openPinEditor({ subjectId: subject.id })}>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Новый закреп"
+                className="max-md:size-10"
+                onClick={() => openPinEditor({ subjectId: subject.id })}
+              >
                 <Plus />
               </Button>
             )}
-            <Button variant="ghost" size="icon-sm" aria-label="Закрыть закреп" onClick={() => setOpen(false)}>
+            <Button variant="ghost" size="icon-sm" aria-label="Закрыть закреп" className="max-md:size-10" onClick={() => setOpen(false)}>
               <X />
             </Button>
           </header>

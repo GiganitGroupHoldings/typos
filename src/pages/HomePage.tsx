@@ -23,7 +23,7 @@ function SubjectCard({ subject: s, children }: { subject: Subject; children: Rea
       style={{ ...subjectStyle(s) }}
       className={cn(
         lens.className,
-        "group block h-full rounded-[var(--radius-surface)] p-5 outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]",
+        "group block h-full rounded-[var(--radius-surface)] p-4 outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98] md:p-5",
       )}
     >
       {children}
@@ -38,8 +38,11 @@ export function HomePage() {
   const count = (xs: { subjectId: string }[], id: string) => xs.filter((x) => x.subjectId === id).length
   const subjectOf = (id: string) => subjects.find((s) => s.id === id)
   return (
-    <motion.div {...pageEnter} className="mx-auto w-full max-w-5xl px-6 py-10 md:px-10">
-      <h1 className="text-[32px] leading-tight font-bold tracking-tight">Предметы</h1>
+    <motion.div
+      {...pageEnter}
+      className="mx-auto w-full max-w-5xl py-8 pr-[max(1rem,var(--safe-right))] pl-[max(1rem,var(--safe-left))] md:px-10 md:py-10"
+    >
+      <h1 className="text-[28px] leading-tight font-bold tracking-tight md:text-[32px]">Предметы</h1>
       <p className="mt-1 text-[15px] text-muted-foreground">{plural(subjects.length, ["предмет", "предмета", "предметов"])}</p>
 
       {!subjects.length && (

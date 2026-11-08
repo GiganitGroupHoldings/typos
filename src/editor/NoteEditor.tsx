@@ -2,7 +2,7 @@ import { Placeholder } from "@tiptap/extensions"
 import { TextSelection } from "@tiptap/pm/state"
 import { EditorContent, useEditor, type Editor } from "@tiptap/react"
 import { BookOpen, Check, Loader2, MoreHorizontal, PenLine, Trash2, Type } from "lucide-react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { useNavigate } from "react-router"
 import { toast } from "sonner"
 import { useUi, type NoteFont } from "@/app/store"
@@ -23,10 +23,12 @@ import {
 import { BlockHandle } from "@/editor/blocks/BlockHandle"
 import { Folding } from "@/editor/blocks/folding"
 import { NoteCanvas } from "@/editor/map/NoteCanvas"
+import { exportMarkdown } from "@/features/notes/exportMarkdown"
 import { ExportMarkdownButton } from "@/features/notes/ExportMarkdownButton"
 import { openPinEditor } from "@/features/pins/PinEditorDialog"
 import { errorText } from "@/lib/errors"
 import { relativeTime } from "@/lib/format"
+import { noteScale, type NoteSize } from "@/lib/noteSize"
 import { toastUndo } from "@/lib/undo"
 import { cn } from "@/lib/utils"
 import { dirname, joinPath } from "@/storage/VaultAdapter"
@@ -37,6 +39,7 @@ import { NoteConflictError, useVault, vaultFileUrl } from "@/vault/store"
 import { BubbleToolbar } from "./BubbleToolbar"
 import { buildExtensions } from "./extensions"
 import { MathPopover, type MathEdit } from "./MathPopover"
+import { MobileEditorBar } from "./MobileEditorBar"
 import { SideToolbar } from "./SideToolbar"
 import { TableMenu } from "./TableMenu"
 import { htmlMathToNodes, looksLikeMarkdown, normalizeMarkdownMath } from "./texImport"
@@ -52,6 +55,8 @@ const isBlank = (md: string) => md.replace(/^#{1,6}\s*$/gm, "").trim() === ""
 export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolean }) {
   const font = useUi((s) => s.noteFont)
   const setNoteFont = useUi((s) => s.setNoteFont)
+  const noteSize = useUi((s) => s.noteSize)
+  const setNoteSize = useUi((s) => s.setNoteSize)
   const toggleReading = useUi((s) => s.toggleReading)
   const navigate = useNavigate()
   const [saveState, setSaveState] = useState<SaveState>("saved")
@@ -406,6 +411,11 @@ export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolea
     toastUndo("Конспект в корзине", undo, () => navigate(`/s/${note.subjectId}/n/${id}`))
   }
 
+  const currentMarkdown = () => {
+    const ed = editorRef.current
+    return ed && !ed.isDestroyed ? ed.getMarkdown() : note.body
+  }
+
   return (
     <div className="flex min-h-full flex-col">
       <SideToolbar
@@ -415,10 +425,30 @@ export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolea
         onBlockFormula={() => editor && openMath(editor.state.selection.from, "block", "new")}
         onImage={() => fileInput.current?.click()}
       />
+      {editor && (
+        <MobileEditorBar
+          editor={editor}
+          reading={reading}
+          onReading={toggleReading}
+          onFormula={formulaFromSelection}
+          onBlockFormula={() => openMath(editor.state.selection.from, "block", "new")}
+          onImage={() => fileInput.current?.click()}
+          onPin={() => {
+            const { from, to } = editor.state.selection
+            const text = editor.state.doc.textBetween(from, to, " ").trim()
+            if (text) pinSelection(text)
+          }}
+          onExport={() => exportMarkdown(note, currentMarkdown())}
+          onDelete={remove}
+          saveState={saveState}
+          noteSize={noteSize}
+          onNoteSize={setNoteSize}
+        />
+      )}
       {editor && <BubbleToolbar editor={editor} linkRequest={linkRequest} onFormula={formulaFromSelection} onPin={pinSelection} />}
       {editor && <TableMenu editor={editor} />}
 
-      <div className="pointer-events-none sticky top-12 z-10 -mt-1 flex items-center justify-end gap-2 px-3 pt-1 [&>*]:pointer-events-auto">
+      <div className="pointer-events-none sticky top-14 z-10 -mt-1 hidden items-center justify-end gap-2 px-3 pt-1 [&>*]:pointer-events-auto md:top-12 md:flex">
         <div className="hidden">
           <input
             ref={fileInput}
@@ -440,13 +470,7 @@ export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolea
           ) : (
             <SaveIndicator state={saveState} />
           )}
-          <ExportMarkdownButton
-            note={note}
-            getMarkdown={() => {
-              const ed = editorRef.current
-              return ed && !ed.isDestroyed ? ed.getMarkdown() : note.body
-            }}
-          />
+          <ExportMarkdownButton note={note} getMarkdown={currentMarkdown} />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon-sm" aria-label="Действия с конспектом">
@@ -469,6 +493,18 @@ export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolea
                   </DropdownMenuRadioGroup>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <Type /> Размер текста
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuRadioGroup value={noteSize} onValueChange={(v) => setNoteSize(v as NoteSize)}>
+                    <DropdownMenuRadioItem value="s">Мелкий</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="m">Обычный</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="l">Крупный</DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
               <DropdownMenuSeparator />
               <DropdownMenuItem variant="destructive" onSelect={remove}>
                 <Trash2 /> Удалить конспект
@@ -480,10 +516,11 @@ export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolea
 
       <div
         className={cn(
-          "note-prose mx-auto w-full pt-8 pr-20 pb-32 pl-6 transition-colors duration-(--dur-slow) lg:px-6",
+          "note-prose mx-auto w-full pt-6 pb-44 pr-[max(1rem,var(--safe-right))] pl-[max(1rem,var(--safe-left))] transition-colors duration-(--dur-slow) md:pt-8 md:pr-20 md:pb-32 md:pl-6 lg:px-6",
           reading && "note-reading",
         )}
         data-font={reading ? "serif" : font}
+        style={{ "--note-scale": noteScale(noteSize) } as CSSProperties}
       >
         <p className="mb-5 text-center text-[13px] text-muted-foreground">
           {note.created === note.updated ? "Новый конспект" : `Изменено ${relativeTime(note.updated)}`}

@@ -68,10 +68,12 @@
     caret-color: var(--highlight);
     accent-color: var(--highlight);
     font-feature-settings: "cv11", "ss01";
+    -webkit-text-size-adjust: 100%;
   }
   body {
     @apply text-foreground;
     background: var(--app-bg);
+    overscroll-behavior: none;
   }
   html[data-desktop] {
     user-select: none;
@@ -83,8 +85,10 @@
     background: var(--selection);
   }
   button:not(:disabled),
-  [role="button"]:not(:disabled) {
+  [role="button"]:not(:disabled),
+  a {
     cursor: pointer;
+    touch-action: manipulation;
   }
 }
 
@@ -99,6 +103,11 @@
 
   .paper {
     background: transparent;
+  }
+
+  .app-scroll {
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
   }
 
   .glass-bar {
@@ -260,8 +269,8 @@
 
 @layer components {
   .note-prose {
-    font-size: 17px;
-    line-height: 1.6;
+    font-size: calc(var(--note-base) * var(--note-scale, 1));
+    line-height: 1.65;
     max-width: 68ch;
     color: var(--foreground);
   }
@@ -270,29 +279,48 @@
   }
   .note-prose[data-font="serif"] {
     font-family: var(--font-serif);
-    font-size: 18px;
-    line-height: 1.65;
+    font-size: calc((var(--note-base) + 1px) * var(--note-scale, 1));
+    line-height: 1.7;
   }
 
   .note-prose h1 {
-    font-size: 32px;
+    font-size: calc(32px * var(--note-scale, 1));
     line-height: 1.2;
     font-weight: 700;
     letter-spacing: -0.02em;
     margin: 0 0 0.5em;
   }
   .note-prose h2 {
-    font-size: 24px;
+    font-size: calc(24px * var(--note-scale, 1));
     line-height: 1.3;
     font-weight: 650;
     letter-spacing: -0.01em;
     margin: 1.6em 0 0.5em;
   }
   .note-prose h3 {
-    font-size: 20px;
+    font-size: calc(20px * var(--note-scale, 1));
     line-height: 1.35;
     font-weight: 600;
     margin: 1.4em 0 0.4em;
+  }
+  @media (max-width: 767px) {
+    .note-prose {
+      --note-base: 18px;
+      max-width: none;
+      line-height: 1.7;
+    }
+    .note-prose h1 {
+      font-size: calc(29px * var(--note-scale, 1));
+    }
+    .note-prose h2 {
+      font-size: calc(22px * var(--note-scale, 1));
+    }
+    .note-prose h3 {
+      font-size: calc(19px * var(--note-scale, 1));
+    }
+    .note-prose .tiptap {
+      touch-action: pan-y;
+    }
   }
   .note-prose p {
     margin: 0 0 0.85em;
@@ -345,6 +373,7 @@
   .note-prose .tiptap {
     outline: none;
     min-height: 50vh;
+    touch-action: pan-y;
   }
   .note-prose .tiptap > :first-child {
     margin-top: 0;

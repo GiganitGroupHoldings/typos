@@ -105,6 +105,11 @@
   --radius-surface: 1.5rem;
   --radius-block: 1rem;
   --radius-chip: 0.5rem;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --note-base: 17px;
   --shadow-card: 0 1px 2px rgb(31 30 29 / 0.04), 0 4px 14px rgb(31 30 29 / 0.05);
   --shadow-float: 0 10px 30px var(--glass-shadow), 0 2px 6px rgb(31 30 29 / 0.06);
 

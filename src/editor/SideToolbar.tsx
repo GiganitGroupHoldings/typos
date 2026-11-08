@@ -161,7 +161,7 @@ export function SideToolbar({
       onPointerLeave={() => mouseY.set(Infinity)}
 
       className={cn(
-        "fixed top-1/2 right-4 z-30 flex -translate-y-1/2 flex-col items-center gap-0.5 rounded-[1.4rem] p-1.5",
+        "fixed top-1/2 right-4 z-30 flex -translate-y-1/2 flex-col items-center gap-0.5 rounded-[1.4rem] p-1.5 max-md:hidden",
         lens.className,
         hidden && "pointer-events-none",
       )}

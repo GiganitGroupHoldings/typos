@@ -18,7 +18,11 @@ export function BoardPage() {
   if (!board || !subject || board.subjectId !== subject.id) return <Navigate to={subject ? `/s/${subject.id}?tab=boards` : "/"} replace />
 
   return (
-    <motion.div {...pageEnter} key={board.id} className="flex h-full flex-col p-3 pt-2">
+    <motion.div
+      {...pageEnter}
+      key={board.id}
+      className="flex h-full flex-col p-3 pt-2 pr-[max(0.75rem,var(--safe-right))] pl-[max(0.75rem,var(--safe-left))]"
+    >
       <div className="mb-2 flex items-center gap-2 px-1">
         <LayoutDashboard className="size-4 shrink-0 text-highlight" />
         <BoardTitle key={`${board.id}:${board.name}`} board={board} />

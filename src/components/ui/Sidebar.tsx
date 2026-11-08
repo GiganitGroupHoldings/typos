@@ -315,7 +315,7 @@ function SidebarContent({ className, ...props }: ComponentProps<"div">) {
       data-slot="sidebar-content"
       data-sidebar="content"
       className={cn(
-        "no-scrollbar flex min-h-0 flex-1 flex-col gap-0 overflow-auto group-data-[collapsible=icon]:overflow-hidden",
+        "flex min-h-0 flex-1 flex-col gap-0 overflow-x-hidden overflow-y-auto group-data-[collapsible=icon]:overflow-hidden",
         className,
       )}
       {...props}
@@ -325,7 +325,12 @@ function SidebarContent({ className, ...props }: ComponentProps<"div">) {
 
 function SidebarGroup({ className, ...props }: ComponentProps<"div">) {
   return (
-    <div data-slot="sidebar-group" data-sidebar="group" className={cn("relative flex w-full min-w-0 flex-col p-2", className)} {...props} />
+    <div
+      data-slot="sidebar-group"
+      data-sidebar="group"
+      className={cn("relative flex w-full min-w-0 shrink-0 flex-col p-2", className)}
+      {...props}
+    />
   )
 }
 
@@ -383,7 +388,7 @@ const sidebarMenuButtonVariants = cva(
           "bg-background shadow-[0_0_0_1px_var(--sidebar-border)] hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_var(--sidebar-accent)]",
       },
       size: {
-        default: "h-8 text-sm",
+        default: "h-11 gap-2.5 rounded-lg text-base [&_svg]:size-5",
         sm: "h-7 text-xs",
         lg: "h-12 text-sm group-data-[collapsible=icon]:p-0!",
       },

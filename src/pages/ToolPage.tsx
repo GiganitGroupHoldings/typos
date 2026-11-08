@@ -31,8 +31,12 @@ export function ToolPage() {
   const inPhone = isHtml && phone
 
   return (
-    <motion.div {...pageEnter} key={tool.id} className="flex h-full flex-col p-3 pt-2">
-      <div className="mb-2 flex items-center gap-2 px-1">
+    <motion.div
+      {...pageEnter}
+      key={tool.id}
+      className="flex h-full flex-col p-3 pt-2 pr-[max(0.75rem,var(--safe-right))] pl-[max(0.75rem,var(--safe-left))]"
+    >
+      <div className="mb-2 flex flex-wrap items-center gap-2 px-1">
         <Icon className="size-4 shrink-0 text-highlight" />
         <h1 className="min-w-0 flex-1 truncate text-[15px] font-semibold">{tool.name}</h1>
         {!isHtml && (
@@ -47,13 +51,16 @@ export function ToolPage() {
               variant="ghost"
               size="sm"
               aria-pressed={phone}
+              aria-label="Телефон"
               onClick={togglePhone}
               className={cn(phone && "bg-accent text-highlight")}
             >
-              <Smartphone /> Телефон
+              <Smartphone />
+              <span className="max-md:hidden">Телефон</span>
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => setRunKey((k) => k + 1)}>
-              <RotateCw /> Перезапустить
+            <Button variant="ghost" size="sm" aria-label="Перезапустить" onClick={() => setRunKey((k) => k + 1)}>
+              <RotateCw />
+              <span className="max-md:hidden">Перезапустить</span>
             </Button>
           </>
         )}
@@ -68,12 +75,14 @@ export function ToolPage() {
         <Button
           variant="ghost"
           size="sm"
+          aria-label="В отдельном окне"
           onClick={() => {
             openWindow("tool", tool.id)
             navigate(`/s/${subject.id}`)
           }}
         >
-          <PictureInPicture2 /> В отдельном окне
+          <PictureInPicture2 />
+          <span className="max-md:hidden">В отдельном окне</span>
         </Button>
         <ToolActions tool={tool} onOpenWindow={() => navigate(`/s/${subject.id}`)} />
       </div>

@@ -23,5 +23,7 @@ export function useThemeSync() {
     const root = document.documentElement
     root.classList.toggle("dark", theme === "dark")
     root.style.colorScheme = theme
+    const meta = document.querySelector('meta[name="theme-color"]')
+    meta?.setAttribute("content", theme === "dark" ? "#191918" : "#f3f2ed")
   }, [theme])
 }
