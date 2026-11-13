@@ -1,4 +1,5 @@
 import { del, get, set } from "idb-keyval"
+import { translate } from "@/app/i18n"
 import { settingsStore } from "./settings"
 import { basename, dirname, type Entry, type VaultAdapter } from "./VaultAdapter"
 
@@ -90,7 +91,7 @@ export class FsaAdapter implements VaultAdapter {
 
   async move(from: string, to: string) {
     if (from === to) return
-    if (await this.exists(to)) throw new Error(`Уже существует: ${to}`)
+    if (await this.exists(to)) throw new Error(translate("Уже существует: {0}", to))
 
     await this.copy(from, to)
     await this.remove(from)

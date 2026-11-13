@@ -1,5 +1,6 @@
 import { Download, MoreHorizontal, Pencil, PictureInPicture2, Trash2 } from "lucide-react"
 import { useNavigate } from "react-router"
+import { translate, useLanguage } from "@/app/i18n"
 import { useUi } from "@/app/store"
 import { Button } from "@/components/ui/Button"
 import {
@@ -17,6 +18,7 @@ import { downloadProjectFile } from "./projectFiles"
 import { openToolDialog } from "./ToolDialog"
 
 export function ToolActions({ tool, className, onOpenWindow }: { tool: Tool; className?: string; onOpenWindow?: () => void }) {
+  useLanguage()
   const openWindow = useUi((s) => s.openWindow)
   const closeWindow = useUi((s) => s.closeWindow)
   const navigate = useNavigate()
@@ -25,7 +27,7 @@ export function ToolActions({ tool, className, onOpenWindow }: { tool: Tool; cla
     closeWindow(`tool:${tool.id}`)
     const undo = await useVault.getState().trashTool(tool.id)
     if (location.pathname.includes(`/t/${tool.id}`)) navigate(`/s/${tool.subjectId}?tab=tools`)
-    toastUndo(`«${tool.name}» в корзине`, undo)
+    toastUndo(translate("«{0}» в корзине", tool.name), undo)
   }
 
   return (
@@ -34,7 +36,7 @@ export function ToolActions({ tool, className, onOpenWindow }: { tool: Tool; cla
         <Button
           variant="ghost"
           size="icon-sm"
-          aria-label={`Действия: ${tool.name}`}
+          aria-label={translate("Действия: {0}", tool.name)}
           className={cn(className)}
           onClick={(e) => {
             e.preventDefault()
@@ -51,17 +53,17 @@ export function ToolActions({ tool, className, onOpenWindow }: { tool: Tool; cla
             onOpenWindow?.()
           }}
         >
-          <PictureInPicture2 /> В отдельном окне
+          <PictureInPicture2 /> {translate("В отдельном окне")}
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => openToolDialog({ subjectId: tool.subjectId, toolId: tool.id })}>
-          <Pencil /> Изменить
+          <Pencil /> {translate("Изменить")}
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => void downloadProjectFile(tool)}>
-          <Download /> Скачать
+          <Download /> {translate("Скачать")}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem variant="destructive" onSelect={remove}>
-          <Trash2 /> Удалить
+          <Trash2 /> {translate("Удалить")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

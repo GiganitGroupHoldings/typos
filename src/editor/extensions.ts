@@ -7,6 +7,7 @@ import { Markdown } from "@tiptap/markdown"
 import type { Node as PMNode } from "@tiptap/pm/model"
 import { Plugin, PluginKey } from "@tiptap/pm/state"
 import StarterKit from "@tiptap/starter-kit"
+import { translate } from "@/app/i18n"
 import { ColorHighlight, LastColor, TextColor } from "./colors"
 import { DiagramCodeBlock } from "./diagrams"
 
@@ -106,7 +107,7 @@ const VaultImage = Image.extend<{ resolve?: ExtensionOptions["resolveImage"] } &
         img.dataset.loading = "true"
         void resolve(src).then((url) => {
           if (url) img.src = url
-          else img.alt = `Нет файла: ${src}`
+          else img.alt = translate("Нет файла: {0}", src)
           delete img.dataset.loading
         })
       } else {

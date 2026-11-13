@@ -1,6 +1,7 @@
 import { GripHorizontal, X } from "lucide-react"
 import { AnimatePresence, motion, useDragControls } from "motion/react"
 import { useRef, type RefObject } from "react"
+import { translate, useLanguage } from "@/app/i18n"
 import { useUi, type FloatingWindow } from "@/app/store"
 import { Button } from "@/components/ui/Button"
 import { ProjectViewer } from "@/features/tools/ProjectViewer"
@@ -9,12 +10,13 @@ import { usePin, useTool } from "@/vault/hooks"
 import { PinBody } from "./PinCard"
 
 function Window({ win, bounds }: { win: FloatingWindow; bounds: RefObject<HTMLDivElement | null> }) {
+  useLanguage()
   const controls = useDragControls()
   const close = useUi((s) => s.closeWindow)
   const focus = useUi((s) => s.focusWindow)
   const pin = usePin(win.kind === "pin" ? win.refId : undefined)
   const tool = useTool(win.kind === "tool" ? win.refId : undefined)
-  const title = pin?.title ?? tool?.name ?? "Окно"
+  const title = pin?.title ?? tool?.name ?? translate("Окно")
   const isTool = win.kind === "tool"
 
   return (
@@ -49,7 +51,7 @@ function Window({ win, bounds }: { win: FloatingWindow; bounds: RefObject<HTMLDi
         <Button
           variant="ghost"
           size="icon-xs"
-          aria-label={`Закрыть «${title}»`}
+          aria-label={translate("Закрыть «{0}»", title)}
           onPointerDown={(e) => e.stopPropagation()}
           onClick={() => close(win.id)}
         >

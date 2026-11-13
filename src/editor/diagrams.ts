@@ -1,5 +1,6 @@
 import CodeBlock, { type CodeBlockOptions } from "@tiptap/extension-code-block"
 import type { Node as PMNode } from "@tiptap/pm/model"
+import { translate } from "@/app/i18n"
 import { mapSlots } from "@/editor/map/slots"
 import { codeHash } from "@/editor/map/types"
 
@@ -152,7 +153,7 @@ export const DiagramCodeBlock = CodeBlock.extend<DiagramCodeBlockOptions>({
           if (mine !== version) return
           const err = document.createElement("div")
           err.className = "diagram-error"
-          err.textContent = `Не удалось построить схему: ${String((e as Error)?.message ?? e).split("\n")[0]}`
+          err.textContent = translate("Не удалось построить схему: {0}", String((e as Error)?.message ?? e).split("\n")[0])
           view.replaceChildren(err)
           failed = true
         }

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react"
 import { Link, useNavigate } from "react-router"
 import { toast } from "sonner"
 import { useAccentSync } from "@/app/accent"
+import { translate, useLanguage } from "@/app/i18n"
 import { Nebula } from "@/app/layout/Nebula"
 import { Button } from "@/components/ui/Button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/Dialog"
@@ -23,6 +24,7 @@ import { countNotes } from "@/vault/repo"
 import { useVault } from "@/vault/store"
 
 export function WelcomePage() {
+  useLanguage()
   useAccentSync(undefined)
   const navigate = useNavigate()
   const adapter = useVault((s) => s.adapter)
@@ -61,12 +63,12 @@ export function WelcomePage() {
     try {
       const res = await connectFolder(migrate && !!browserNotes)
       if (!res) return
-      toast.success("Папка подключена", {
-        description: res.copied ? `Скопировано файлов: ${res.copied}` : undefined,
+      toast.success(translate("Папка подключена"), {
+        description: res.copied ? translate("Скопировано файлов: {0}", res.copied) : undefined,
       })
       navigate("/")
     } catch (e) {
-      toast.error("Не удалось подключить папку", { description: errorText(e) })
+      toast.error(translate("Не удалось подключить папку"), { description: errorText(e) })
     } finally {
       setBusy(false)
     }
@@ -88,8 +90,8 @@ export function WelcomePage() {
     setBusy(true)
     try {
       const res = await connectRemote(config, migrate && ((inBrowser && !!browserNotes) || (inFolder && !!folderNotes)))
-      toast.success("Сервер подключён", {
-        description: res.copied ? `Скопировано файлов: ${res.copied}` : undefined,
+      toast.success(translate("Сервер подключён"), {
+        description: res.copied ? translate("Скопировано файлов: {0}", res.copied) : undefined,
       })
       setLink("")
       navigate("/")
@@ -106,11 +108,11 @@ export function WelcomePage() {
     try {
       const res = await copyToFolder()
       if (!res) return
-      toast.success(`Скопировано в папку «${res.folder}»`, {
-        description: `Скопировано файлов: ${res.copied}`,
+      toast.success(translate("Скопировано в папку «{0}»", res.folder), {
+        description: translate("Скопировано файлов: {0}", res.copied),
       })
     } catch (e) {
-      toast.error("Не удалось скопировать в папку", { description: errorText(e) })
+      toast.error(translate("Не удалось скопировать в папку"), { description: errorText(e) })
     } finally {
       setBusy(false)
     }
@@ -120,10 +122,10 @@ export function WelcomePage() {
     setBusy(true)
     try {
       await switchToBrowser()
-      toast(inRemote ? "Сервер отключён" : "Папка отключена")
+      toast(inRemote ? translate("Сервер отключён") : translate("Папка отключена"))
       navigate("/")
     } catch (e) {
-      toast.error("Не удалось отключить", { description: errorText(e) })
+      toast.error(translate("Не удалось отключить"), { description: errorText(e) })
     } finally {
       setBusy(false)
       setConfirmDisconnect(false)
@@ -143,7 +145,7 @@ export function WelcomePage() {
       >
         {status === "ready" && (
           <Link to="/" className="mb-4 inline-flex items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="size-3.5" /> Назад
+            <ArrowLeft className="size-3.5" /> {translate("Назад")}
           </Link>
         )}
         <div className="text-center">
@@ -151,10 +153,10 @@ export function WelcomePage() {
             variants={listItem}
             className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-primary text-2xl font-bold text-primary-foreground shadow-card"
           >
-            К
+            K
           </motion.span>
           <motion.h1 variants={listItem} className="mt-5 text-[24px] font-bold tracking-tight">
-            Хранилище
+            {translate("Хранилище")}
           </motion.h1>
         </div>
 
@@ -167,14 +169,14 @@ export function WelcomePage() {
             <MonitorSmartphone className="size-4 shrink-0 text-muted-foreground" />
           )}
           <span className="min-w-0 flex-1">
-            Сейчас: <b className="font-semibold">{storageLabel(adapter) ?? "хранилище браузера"}</b>
+            {translate("Сейчас:")} <b className="font-semibold">{storageLabel(adapter) ?? translate("хранилище браузера")}</b>
             {adapter instanceof SyncedAdapter && (
               <span className="block truncate text-[12px] text-muted-foreground">{adapter.config.url}</span>
             )}
           </span>
           {!inBrowser && (
             <Button size="sm" variant="outline" disabled={busy} onClick={() => setConfirmDisconnect(true)}>
-              Отключить
+              {translate("Отключить")}
             </Button>
           )}
         </motion.div>
@@ -188,7 +190,7 @@ export function WelcomePage() {
               onClick={() => setConfirmCopy(true)}
               className="w-full justify-start"
             >
-              <FolderDown /> Скопировать в папку
+              <FolderDown /> {translate("Скопировать в папку")}
             </Button>
           </motion.div>
         )}
@@ -199,8 +201,8 @@ export function WelcomePage() {
             role="alert"
             className="mt-4 flex items-start gap-2 rounded-xl border border-destructive/30 px-3 py-2.5 text-[13px] text-destructive"
           >
-            <TriangleAlert className="mt-0.5 size-4 shrink-0" /> Для доступа к папке открой приложение в Chrome или Edge по HTTPS или
-            localhost.
+            <TriangleAlert className="mt-0.5 size-4 shrink-0" />{" "}
+            {translate("Для доступа к папке открой приложение в Chrome или Edge по HTTPS или localhost.")}
           </motion.p>
         )}
 
@@ -216,9 +218,10 @@ export function WelcomePage() {
               className="mt-1 size-4 accent-(--highlight)"
             />
             <span>
-              Скопировать данные из браузера
+              {translate("Скопировать данные из браузера")}
               <span className="block text-[13px] text-muted-foreground">
-                {plural(browserNotes, ["конспект", "конспекта", "конспектов"])}. Существующие файлы не заменятся.
+                {plural(browserNotes, ["конспект", "конспекта", "конспектов"])}
+                {translate(". Существующие файлы не заменятся.")}
               </span>
             </span>
           </motion.label>
@@ -236,9 +239,10 @@ export function WelcomePage() {
               className="mt-1 size-4 accent-(--highlight)"
             />
             <span>
-              Скопировать папку «{adapter?.label}» на сервер
+              {translate("Скопировать папку «{0}» на сервер", adapter?.label)}
               <span className="block text-[13px] text-muted-foreground">
-                {plural(folderNotes, ["конспект", "конспекта", "конспектов"])}. Существующие файлы на сервере не заменятся.
+                {plural(folderNotes, ["конспект", "конспекта", "конспектов"])}
+                {translate(". Существующие файлы на сервере не заменятся.")}
               </span>
             </span>
           </motion.label>
@@ -247,11 +251,11 @@ export function WelcomePage() {
         <motion.div variants={listItem} className="mt-6 flex flex-col gap-2">
           <LiquidButton size="xl" className="w-full rounded-full font-semibold" disabled={!supported || busy} onClick={connect}>
             {busy ? <Loader2 className="animate-spin" /> : <FolderOpen />}
-            {inFolder ? "Выбрать другую папку" : "Выбрать папку"}
+            {inFolder ? translate("Выбрать другую папку") : translate("Выбрать папку")}
           </LiquidButton>
           {inBrowser && (
             <Button size="lg" variant="ghost" onClick={() => navigate("/")}>
-              Продолжить в браузере
+              {translate("Продолжить в браузере")}
             </Button>
           )}
         </motion.div>
@@ -265,9 +269,9 @@ export function WelcomePage() {
           }}
         >
           <label htmlFor="storage-link" className="flex items-center gap-2 text-[14px] font-semibold">
-            <Server className="size-4 text-highlight" /> {inRemote ? "Другой сервер" : "Сервер"}
+            <Server className="size-4 text-highlight" /> {inRemote ? translate("Другой сервер") : translate("Сервер")}
           </label>
-          <p className="mt-1 text-[13px] text-muted-foreground">Вставь ссылку подключения typos://.</p>
+          <p className="mt-1 text-[13px] text-muted-foreground">{translate("Вставь ссылку подключения typos://.")}</p>
           <div className="mt-3 flex gap-2">
             <Input
               id="storage-link"
@@ -284,12 +288,12 @@ export function WelcomePage() {
               className="h-9 font-mono text-[13px]"
             />
             <Button type="submit" size="lg" disabled={busy || !link.trim()}>
-              {busy ? <Loader2 className="animate-spin" /> : "Подключить"}
+              {busy ? <Loader2 className="animate-spin" /> : translate("Подключить")}
             </Button>
           </div>
           {linkError && (
             <p id="storage-link-error" role="alert" className="mt-2 flex items-start gap-2 text-[13px] text-destructive">
-              <TriangleAlert className="mt-0.5 size-4 shrink-0" /> {linkError}
+              <TriangleAlert className="mt-0.5 size-4 shrink-0" /> {translate(linkError)}
             </p>
           )}
         </motion.form>
@@ -298,18 +302,19 @@ export function WelcomePage() {
       <Dialog open={confirmCopy} onOpenChange={(o) => !o && setConfirmCopy(false)}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Скопировать в папку?</DialogTitle>
+            <DialogTitle>{translate("Скопировать в папку?")}</DialogTitle>
             <DialogDescription>
-              Файлы с сервера «{adapter?.label}» скопируются в выбранную папку. Файлы с совпадающими именами
-              <b className="font-semibold text-foreground"> заменятся</b>. Подключение к серверу сохранится.
+              {translate("Файлы с сервера «{0}» скопируются в выбранную папку. Файлы с совпадающими именами", adapter?.label)}
+              <b className="font-semibold text-foreground"> {translate("заменятся")}</b>
+              {translate(". Подключение к серверу сохранится.")}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setConfirmCopy(false)}>
-              Отмена
+              {translate("Отмена")}
             </Button>
             <Button disabled={busy} onClick={copyServer}>
-              <FolderDown /> Выбрать папку
+              <FolderDown /> {translate("Выбрать папку")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -318,25 +323,27 @@ export function WelcomePage() {
       <Dialog open={confirmDisconnect} onOpenChange={(o) => !o && setConfirmDisconnect(false)}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>{inRemote ? `Отключиться от сервера «${adapter?.label}»?` : `Отключить папку «${adapter?.label}»?`}</DialogTitle>
+            <DialogTitle>
+              {inRemote ? translate("Отключиться от сервера «{0}»?", adapter?.label) : translate("Отключить папку «{0}»?", adapter?.label)}
+            </DialogTitle>
             <DialogDescription>
-              {inRemote ? "Файлы останутся на сервере." : "Файлы останутся в папке."}{" "}
+              {inRemote ? translate("Файлы останутся на сервере.") : translate("Файлы останутся в папке.")}{" "}
               {inRemote && pending > 0 && (
                 <b className="font-semibold text-foreground">
-                  {plural(pending, ["правка не отправлена", "правки не отправлены", "правок не отправлено"])}. Изменения останутся на
-                  устройстве до повторного подключения.{" "}
+                  {plural(pending, ["правка не отправлена", "правки не отправлены", "правок не отправлено"])}
+                  {translate(". Изменения останутся на устройстве до повторного подключения.")}{" "}
                 </b>
               )}
-              Откроется хранилище браузера.
+              {translate("Откроется хранилище браузера.")}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setConfirmDisconnect(false)}>
-              Отмена
+              {translate("Отмена")}
             </Button>
             <Button disabled={busy} onClick={disconnect}>
               {busy && <Loader2 className="animate-spin" />}
-              Отключить
+              {translate("Отключить")}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,5 +1,6 @@
 import { Pin, Trash2 } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
+import { translate, useLanguage } from "@/app/i18n"
 import { Button } from "@/components/ui/Button"
 import { Kbd } from "@/components/ui/Kbd"
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/Popover"
@@ -29,6 +30,7 @@ interface Props {
 type MathfieldEl = HTMLElement & { value: string }
 
 export function MathPopover({ edit, onSave, onDelete, onCancel, onPin }: Props) {
+  useLanguage()
   const [latex, setLatex] = useState("")
   const [visual, setVisual] = useState(false)
   const [mlState, setMlState] = useState<"idle" | "loading" | "ready" | "error">("idle")
@@ -56,7 +58,7 @@ export function MathPopover({ edit, onSave, onDelete, onCancel, onPin }: Props) 
         MathfieldElement.soundsDirectory = null
         const mf = new MathfieldElement() as unknown as MathfieldEl
         mf.value = latex
-        mf.setAttribute("aria-label", "Визуальный редактор формулы")
+        mf.setAttribute("aria-label", translate("Визуальный редактор формулы"))
         mf.className = "math-field"
         mf.addEventListener("input", () => setLatex(mf.value))
         fieldHost.current.replaceChildren(mf)
@@ -105,10 +107,10 @@ export function MathPopover({ edit, onSave, onDelete, onCancel, onPin }: Props) 
         onCloseAutoFocus={(e) => e.preventDefault()}
       >
         <div className="flex items-center gap-1 border-b px-2 py-1.5">
-          <div role="tablist" aria-label="Способ ввода" className="liquid-2 flex rounded-lg p-0.5">
+          <div role="tablist" aria-label={translate("Способ ввода")} className="liquid-2 flex rounded-lg p-0.5">
             {[
               { v: false, label: "LaTeX" },
-              { v: true, label: "Визуально" },
+              { v: true, label: translate("Визуально") },
             ].map((t) => (
               <button
                 key={t.label}
@@ -124,9 +126,11 @@ export function MathPopover({ edit, onSave, onDelete, onCancel, onPin }: Props) 
               </button>
             ))}
           </div>
-          <span className="flex-1 px-2 text-[12px] text-muted-foreground">{block ? "Блочная формула" : "В строке"}</span>
+          <span className="flex-1 px-2 text-[12px] text-muted-foreground">
+            {block ? translate("Блочная формула") : translate("В строке")}
+          </span>
           {edit?.mode === "edit" && (
-            <Button variant="ghost" size="icon-xs" aria-label="Удалить формулу" onClick={onDelete}>
+            <Button variant="ghost" size="icon-xs" aria-label={translate("Удалить формулу")} onClick={onDelete}>
               <Trash2 />
             </Button>
           )}
@@ -143,8 +147,10 @@ export function MathPopover({ edit, onSave, onDelete, onCancel, onPin }: Props) 
               }}
             >
               <div ref={fieldHost} className="min-h-12 rounded-lg border bg-background px-2 py-1.5" />
-              {mlState === "loading" && <p className="mt-2 text-[12px] text-muted-foreground">Загрузка…</p>}
-              {mlState === "error" && <p className="mt-2 text-[12px] text-destructive">Редактор недоступен. Используй LaTeX.</p>}
+              {mlState === "loading" && <p className="mt-2 text-[12px] text-muted-foreground">{translate("Загрузка…")}</p>}
+              {mlState === "error" && (
+                <p className="mt-2 text-[12px] text-destructive">{translate("Редактор недоступен. Используй LaTeX.")}</p>
+              )}
             </div>
           ) : (
             <textarea
@@ -160,13 +166,17 @@ export function MathPopover({ edit, onSave, onDelete, onCancel, onPin }: Props) 
               rows={block ? 4 : 2}
               spellCheck={false}
               placeholder={block ? "\\sum_{k=1}^{n} a_k" : "x^2 + y^2 = r^2"}
-              aria-label="Формула в LaTeX"
+              aria-label={translate("Формула в LaTeX")}
               className="w-full resize-none rounded-lg border bg-background px-3 py-2 font-mono text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           )}
 
           <div aria-live="polite" className="thin-scrollbar mt-2 min-h-10 overflow-x-auto rounded-lg bg-muted/60 px-3 py-2 text-center">
-            {latex.trim() ? <Tex tex={latex} block={block} /> : <span className="text-[12px] text-muted-foreground">Превью</span>}
+            {latex.trim() ? (
+              <Tex tex={latex} block={block} />
+            ) : (
+              <span className="text-[12px] text-muted-foreground">{translate("Превью")}</span>
+            )}
           </div>
         </div>
 
@@ -181,11 +191,11 @@ export function MathPopover({ edit, onSave, onDelete, onCancel, onPin }: Props) 
               disabled={!latex.trim()}
               onClick={() => onPin((visual && field.current ? field.current.value : latex).trim())}
             >
-              <Pin /> В закреп
+              <Pin /> {translate("В закреп")}
             </Button>
           )}
           <Button size="sm" onClick={commit}>
-            Готово
+            {translate("Готово")}
           </Button>
         </div>
       </PopoverContent>

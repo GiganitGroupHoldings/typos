@@ -2,6 +2,7 @@ import { isTauri } from "@tauri-apps/api/core"
 import { getCurrentWebview } from "@tauri-apps/api/webview"
 import { useEffect } from "react"
 import { toast } from "sonner"
+import { translate } from "@/app/i18n"
 import { errorText } from "@/lib/errors"
 import { useUi } from "./store"
 import { zoomShortcut } from "./zoomValue"
@@ -23,7 +24,7 @@ export function useDesktopZoom() {
             applied = requested
           } catch (error) {
             if (stopped) return
-            toast.error("Не удалось изменить масштаб", {
+            toast.error(translate("Не удалось изменить масштаб"), {
               description: errorText(error),
             })
             if (useUi.getState().desktopZoom === requested) useUi.getState().setDesktopZoom(applied)

@@ -1,6 +1,7 @@
 import { XIcon } from "lucide-react"
 import { Dialog as DialogPrimitive } from "radix-ui"
 import { type ComponentProps } from "react"
+import { translate, useLanguage } from "@/app/i18n"
 import { Button } from "@/components/ui/Button"
 import { useLiquidLens } from "@/components/ui/LiquidLens"
 import { CARD_LENS } from "@/components/ui/liquidLensOptions"
@@ -47,6 +48,7 @@ function DialogContent({
   showCloseButton?: boolean
   surface?: "glass" | "liquid"
 }) {
+  useLanguage()
   const lens = useLiquidLens(CARD_LENS)
   return (
     <DialogPortal>
@@ -66,7 +68,7 @@ function DialogContent({
           <DialogPrimitive.Close data-slot="dialog-close" asChild>
             <Button variant="ghost" className="absolute top-2 right-2" size="icon-sm">
               <XIcon />
-              <span className="sr-only">Закрыть</span>
+              <span className="sr-only">{translate("Закрыть")}</span>
             </Button>
           </DialogPrimitive.Close>
         )}
@@ -87,6 +89,7 @@ function DialogFooter({
 }: ComponentProps<"div"> & {
   showCloseButton?: boolean
 }) {
+  useLanguage()
   return (
     <div
       data-slot="dialog-footer"
@@ -96,7 +99,7 @@ function DialogFooter({
       {children}
       {showCloseButton && (
         <DialogPrimitive.Close asChild>
-          <Button variant="outline">Закрыть</Button>
+          <Button variant="outline">{translate("Закрыть")}</Button>
         </DialogPrimitive.Close>
       )}
     </div>

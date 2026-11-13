@@ -2,6 +2,7 @@ import { FileText, Folder, FolderOpen, LayoutDashboard, Loader2, Pin, RotateCcw,
 import { motion } from "motion/react"
 import { useCallback, useEffect, useState } from "react"
 import { toast } from "sonner"
+import { translate, useLanguage } from "@/app/i18n"
 import { Button } from "@/components/ui/Button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/Dialog"
 import { errorText } from "@/lib/errors"
@@ -20,6 +21,7 @@ const KIND: Record<TrashKind, { icon: LucideIcon; label: string }> = {
 }
 
 export function TrashPage() {
+  useLanguage()
   const listTrash = useVault((s) => s.listTrash)
   const restoreTrash = useVault((s) => s.restoreTrash)
   const deleteForever = useVault((s) => s.deleteForever)
@@ -30,7 +32,7 @@ export function TrashPage() {
   const load = useCallback(() => {
     listTrash().then(setItems, (e) => {
       setItems([])
-      toast.error("Не удалось открыть корзину", { description: errorText(e) })
+      toast.error(translate("Не удалось открыть корзину"), { description: errorText(e) })
     })
   }, [listTrash])
   useEffect(load, [load])
@@ -38,10 +40,10 @@ export function TrashPage() {
   const restore = async (item: TrashItem) => {
     try {
       await restoreTrash(item)
-      toast.success(`Восстановлено: «${item.name}»`, { description: item.originalPath })
+      toast.success(translate("Восстановлено: «{0}»", item.name), { description: item.originalPath })
       load()
     } catch (e) {
-      toast.error("Не удалось восстановить", { description: errorText(e) })
+      toast.error(translate("Не удалось восстановить"), { description: errorText(e) })
     }
   }
 
@@ -53,7 +55,7 @@ export function TrashPage() {
       setConfirm(null)
       load()
     } catch (e) {
-      toast.error("Не удалось удалить", { description: errorText(e) })
+      toast.error(translate("Не удалось удалить"), { description: errorText(e) })
     } finally {
       setBusy(false)
     }
@@ -63,12 +65,12 @@ export function TrashPage() {
     <motion.div {...pageEnter} className="mx-auto w-full max-w-3xl px-6 py-10 md:px-10">
       <header className="flex items-end gap-4">
         <div className="flex-1">
-          <h1 className="text-[32px] leading-tight font-bold tracking-tight">Корзина</h1>
-          <p className="mt-1 text-[15px] text-muted-foreground">Файлы удаляются навсегда через 30 дней.</p>
+          <h1 className="text-[32px] leading-tight font-bold tracking-tight">{translate("Корзина")}</h1>
+          <p className="mt-1 text-[15px] text-muted-foreground">{translate("Файлы удаляются навсегда через 30 дней.")}</p>
         </div>
         {!!items?.length && (
           <Button variant="outline" onClick={() => setConfirm(items)}>
-            <Trash2 /> Очистить
+            <Trash2 /> {translate("Очистить")}
           </Button>
         )}
       </header>
@@ -78,7 +80,9 @@ export function TrashPage() {
           <Loader2 className="size-5 animate-spin" />
         </div>
       ) : !items.length ? (
-        <p className="mt-8 rounded-3xl border border-dashed px-6 py-14 text-center text-[15px] text-muted-foreground">Корзина пуста</p>
+        <p className="mt-8 rounded-3xl border border-dashed px-6 py-14 text-center text-[15px] text-muted-foreground">
+          {translate("Корзина пуста")}
+        </p>
       ) : (
         <motion.ul
           variants={listParent}
@@ -94,15 +98,22 @@ export function TrashPage() {
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-[15px] font-medium">{item.name}</div>
                   <div className="flex flex-wrap gap-x-3 text-[13px] text-muted-foreground">
-                    <span>{label}</span>
+                    <span>{translate(label)}</span>
                     <span>{item.originalPath.split("/")[0]}</span>
-                    <span>Удалено {relativeTime(item.deletedAt)}</span>
+                    <span>
+                      {translate("Удалено")} {relativeTime(item.deletedAt)}
+                    </span>
                   </div>
                 </div>
                 <Button size="sm" variant="ghost" onClick={() => restore(item)}>
-                  <RotateCcw /> Вернуть
+                  <RotateCcw /> {translate("Вернуть")}
                 </Button>
-                <Button size="icon-sm" variant="ghost" aria-label={`Удалить «${item.name}» навсегда`} onClick={() => setConfirm([item])}>
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  aria-label={translate("Удалить «{0}» навсегда", item.name)}
+                  onClick={() => setConfirm([item])}
+                >
                   <Trash2 />
                 </Button>
               </motion.li>
@@ -114,20 +125,20 @@ export function TrashPage() {
       <Dialog open={!!confirm} onOpenChange={(o) => !o && setConfirm(null)}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Удалить навсегда?</DialogTitle>
+            <DialogTitle>{translate("Удалить навсегда?")}</DialogTitle>
             <DialogDescription>
               {confirm?.length === 1
-                ? `«${confirm[0].name}» будет удалено из хранилища.`
-                : `Из хранилища будут удалены ${plural(confirm?.length ?? 0, ["объект", "объекта", "объектов"])}.`}{" "}
-              Это нельзя отменить.
+                ? translate("«{0}» будет удалено из хранилища.", confirm[0].name)
+                : translate("Из хранилища будут удалены {0}.", plural(confirm?.length ?? 0, ["объект", "объекта", "объектов"]))}{" "}
+              {translate("Это нельзя отменить.")}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setConfirm(null)}>
-              Отмена
+              {translate("Отмена")}
             </Button>
             <Button variant="destructive" disabled={busy} onClick={destroy}>
-              Удалить навсегда
+              {translate("Удалить навсегда")}
             </Button>
           </DialogFooter>
         </DialogContent>

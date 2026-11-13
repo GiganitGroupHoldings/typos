@@ -1,5 +1,6 @@
 import { create } from "zustand"
 import { createJSONStorage, persist } from "zustand/middleware"
+import type { Language } from "@/app/i18n"
 import { normalizeNoteSize, type NoteSize } from "@/lib/noteSize"
 import { normalizeZoom } from "./zoomValue"
 
@@ -19,6 +20,8 @@ export interface FloatingWindow {
 }
 
 interface UiState {
+  language: Language
+  setLanguage: (language: Language) => void
   theme: ThemePref
   noteFont: NoteFont
   noteSize: NoteSize
@@ -48,6 +51,7 @@ interface UiState {
   setNoteSize: (s: NoteSize) => void
   toggleReading: () => void
   toggleFocus: () => void
+  setFocusMode: (value: boolean) => void
   setPinsOpen: (v: boolean) => void
   togglePins: () => void
   setPaletteOpen: (v: boolean) => void
@@ -80,6 +84,8 @@ const order: ThemePref[] = ["light", "dark", "system"]
 export const useUi = create<UiState>()(
   persist(
     (set) => ({
+      language: "ru",
+      setLanguage: (language) => set({ language }),
       theme: "light",
       noteFont: "inter",
       noteSize: "m",
@@ -108,6 +114,7 @@ export const useUi = create<UiState>()(
       setNoteSize: (noteSize) => set({ noteSize: normalizeNoteSize(noteSize) }),
       toggleReading: () => set((s) => ({ readingMode: !s.readingMode })),
       toggleFocus: () => set((s) => ({ focusMode: !s.focusMode })),
+      setFocusMode: (focusMode) => set({ focusMode }),
       setPinsOpen: (pinsOpen) => set({ pinsOpen }),
       togglePins: () => set((s) => ({ pinsOpen: !s.pinsOpen })),
       setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
@@ -134,6 +141,7 @@ export const useUi = create<UiState>()(
       name: "studynotes-ui",
       storage: safeStorage,
       partialize: (s) => ({
+        language: s.language,
         theme: s.theme,
         noteFont: s.noteFont,
         noteSize: s.noteSize,
@@ -148,6 +156,7 @@ export const useUi = create<UiState>()(
         return {
           ...current,
           ...saved,
+          language: saved.language === "en" ? "en" : "ru",
           noteSize: normalizeNoteSize(saved.noteSize),
           responsiveAccent: typeof saved.responsiveAccent === "boolean" ? saved.responsiveAccent : true,
           fixedAccent: typeof saved.fixedAccent === "string" && /^#[0-9a-f]{6}$/i.test(saved.fixedAccent) ? saved.fixedAccent : "#5078d4",

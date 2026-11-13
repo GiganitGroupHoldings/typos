@@ -3,6 +3,7 @@ import { motion } from "motion/react"
 import { useEffect, useRef } from "react"
 import { Navigate, useParams, useSearchParams } from "react-router"
 import { toast } from "sonner"
+import { translate, useLanguage } from "@/app/i18n"
 import { BoardActions } from "@/features/boards/BoardActions"
 import { BoardCanvas } from "@/features/boards/BoardCanvas"
 import { errorText } from "@/lib/errors"
@@ -36,6 +37,7 @@ export function BoardPage() {
 }
 
 function BoardTitle({ board }: { board: Board }) {
+  useLanguage()
   const ref = useRef<HTMLInputElement>(null)
   const [params, setParams] = useSearchParams()
   const focus = params.has("new") || params.has("rename")
@@ -57,7 +59,7 @@ function BoardTitle({ board }: { board: Board }) {
       await useVault.getState().renameBoard(board.id, name)
     } catch (e) {
       el.value = board.name
-      toast.error("Не удалось переименовать доску", { description: errorText(e) })
+      toast.error(translate("Не удалось переименовать доску"), { description: errorText(e) })
     }
   }
 
@@ -65,7 +67,7 @@ function BoardTitle({ board }: { board: Board }) {
     <input
       ref={ref}
       defaultValue={board.name}
-      aria-label="Название доски"
+      aria-label={translate("Название доски")}
       onBlur={(e) => void save(e.currentTarget)}
       onKeyDown={(e) => {
         if (e.key !== "Enter" && e.key !== "Escape") return

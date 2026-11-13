@@ -2,6 +2,7 @@ import { GripVertical, Maximize2, Plus, X } from "lucide-react"
 import { AnimatePresence, motion, Reorder, useDragControls } from "motion/react"
 import { useEffect, useState } from "react"
 import { useParams } from "react-router"
+import { translate, useLanguage } from "@/app/i18n"
 import { useUi } from "@/app/store"
 import { Button } from "@/components/ui/Button"
 import { useLiquidLens } from "@/components/ui/LiquidLens"
@@ -17,6 +18,7 @@ import { PinBody } from "./PinCard"
 import { openPinEditor } from "./PinEditorDialog"
 
 export function PinsDrawer() {
+  useLanguage()
   const { subjectId } = useParams()
   const subject = useSubject(subjectId)
   const pins = usePinsOf(subjectId)
@@ -37,7 +39,7 @@ export function PinsDrawer() {
       {open && (
         <motion.aside
           key="pins"
-          aria-label="Закреп"
+          aria-label={translate("Закреп")}
           initial={mobile ? { y: 40, opacity: 0 } : { x: 24, opacity: 0 }}
           animate={mobile ? { y: 0, opacity: 1, transition: springSoft } : { x: 0, opacity: 1, transition: springSoft }}
           exit={
@@ -53,30 +55,36 @@ export function PinsDrawer() {
         >
           <div aria-hidden className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-border md:hidden" />
           <header className="flex items-center gap-1 border-b py-2 pr-2 pl-4">
-            <h2 className="flex-1 truncate text-sm font-semibold">{subject ? subject.name : "Закреп"}</h2>
+            <h2 className="flex-1 truncate text-sm font-semibold">{subject ? subject.name : translate("Закреп")}</h2>
             {subject && (
               <Button
                 variant="ghost"
                 size="icon-sm"
-                aria-label="Новый закреп"
+                aria-label={translate("Новый закреп")}
                 className="max-md:size-10"
                 onClick={() => openPinEditor({ subjectId: subject.id })}
               >
                 <Plus />
               </Button>
             )}
-            <Button variant="ghost" size="icon-sm" aria-label="Закрыть закреп" className="max-md:size-10" onClick={() => setOpen(false)}>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={translate("Закрыть закреп")}
+              className="max-md:size-10"
+              onClick={() => setOpen(false)}
+            >
               <X />
             </Button>
           </header>
 
           {!subject ? (
-            <p className="p-6 text-center text-sm text-muted-foreground">Выбери предмет</p>
+            <p className="p-6 text-center text-sm text-muted-foreground">{translate("Выбери предмет")}</p>
           ) : !pins.length ? (
             <div className="p-6 text-center">
-              <p className="text-sm text-muted-foreground">Нет закрепов</p>
+              <p className="text-sm text-muted-foreground">{translate("Нет закрепов")}</p>
               <Button size="sm" variant="outline" className="mt-3" onClick={() => openPinEditor({ subjectId: subject.id })}>
-                <Plus /> Закреп
+                <Plus /> {translate("Закреп")}
               </Button>
             </div>
           ) : (
@@ -106,6 +114,7 @@ function PinList({ pins, subjectId }: { pins: Pin[]; subjectId: string }) {
 }
 
 function PinRow({ pin, siblings, onDrop }: { pin: Pin; siblings: Pin[]; onDrop: () => void }) {
+  useLanguage()
   const controls = useDragControls()
   const floating = useUi((s) => s.windows.some((w) => w.id === `pin:${pin.id}`))
   const openWindow = useUi((s) => s.openWindow)
@@ -113,7 +122,9 @@ function PinRow({ pin, siblings, onDrop }: { pin: Pin; siblings: Pin[]; onDrop: 
   return (
     <Reorder.Item value={pin} dragListener={false} dragControls={controls} onDragEnd={onDrop} className="relative list-none">
       {floating ? (
-        <div className="rounded-xl border border-dashed px-4 py-3 text-[13px] text-muted-foreground">«{pin.title}» открыто в окне</div>
+        <div className="rounded-xl border border-dashed px-4 py-3 text-[13px] text-muted-foreground">
+          {translate("«{0}» открыто в окне", pin.title)}
+        </div>
       ) : (
         <motion.div
           layoutId={`pin-${pin.id}`}
@@ -123,7 +134,7 @@ function PinRow({ pin, siblings, onDrop }: { pin: Pin; siblings: Pin[]; onDrop: 
         >
           <button
             type="button"
-            aria-label={`Перетащить «${pin.title}»`}
+            aria-label={translate("Перетащить «{0}»", pin.title)}
             onPointerDown={(e) => controls.start(e)}
             className={cn(
               "absolute cursor-grab touch-none rounded p-0.5 text-muted-foreground/50 opacity-0 transition-opacity group-hover:opacity-100 pointer-coarse:opacity-100 hover:text-foreground focus-visible:opacity-100 active:cursor-grabbing",
@@ -135,7 +146,12 @@ function PinRow({ pin, siblings, onDrop }: { pin: Pin; siblings: Pin[]; onDrop: 
           <PinBody pin={pin} size={pin.kind === "link" ? "lg" : "md"} />
           <div className="absolute top-2 right-1.5 flex flex-col gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 pointer-coarse:opacity-100 focus-within:opacity-100">
             <PinActions pin={pin} siblings={siblings} />
-            <Button variant="ghost" size="icon-xs" aria-label={`Открыть «${pin.title}» в окне`} onClick={() => openWindow("pin", pin.id)}>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              aria-label={translate("Открыть «{0}» в окне", pin.title)}
+              onClick={() => openWindow("pin", pin.id)}
+            >
               <Maximize2 />
             </Button>
           </div>

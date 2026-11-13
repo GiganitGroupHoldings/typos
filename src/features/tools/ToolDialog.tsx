@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react"
 import { useNavigate } from "react-router"
 import { toast } from "sonner"
 import { create } from "zustand"
+import { translate, useLanguage } from "@/app/i18n"
 import { Button } from "@/components/ui/Button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/Dialog"
 import { Input } from "@/components/ui/Input"
@@ -52,6 +53,7 @@ export async function importHtmlFile(subjectId: string, file: File) {
 }
 
 export function ToolDialog() {
+  useLanguage()
   const target = useTarget((s) => s.target)
   const close = () => useTarget.getState().set(null)
   const tool = useVault((s) => s.tools.find((t) => t.id === target?.toolId))
@@ -110,13 +112,13 @@ export function ToolDialog() {
         const t = await v.importProjectFile(target.subjectId, { name: file.name, blob: file, title: name })
         navigate(`/s/${t.subjectId}/t/${t.id}`)
       } else {
-        if (!looksLikeHtml(html)) throw new Error("Вставь полный HTML-документ.")
+        if (!looksLikeHtml(html)) throw new Error(translate("Вставь полный HTML-документ."))
         const t = await v.importTool(target.subjectId, { name, html, icon })
         navigate(`/s/${t.subjectId}/t/${t.id}`)
       }
       close()
     } catch (err) {
-      toast.error(tool ? "Не удалось сохранить" : "Не удалось добавить", { description: errorText(err) })
+      toast.error(tool ? translate("Не удалось сохранить") : translate("Не удалось добавить"), { description: errorText(err) })
     } finally {
       setBusy(false)
     }
@@ -130,16 +132,16 @@ export function ToolDialog() {
       <DialogContent aria-describedby={undefined} className="sm:max-w-lg">
         <form onSubmit={submit} onKeyDown={submitOnCtrlEnter} className="contents">
           <DialogHeader>
-            <DialogTitle>{tool ? "Изменить проект" : "Добавить в проекты"}</DialogTitle>
+            <DialogTitle>{tool ? translate("Изменить проект") : translate("Добавить в проекты")}</DialogTitle>
           </DialogHeader>
 
           {!tool && (
             <div>
-              <div role="tablist" aria-label="Источник файла" className="liquid-2 mb-2 flex rounded-xl p-1">
+              <div role="tablist" aria-label={translate("Источник файла")} className="liquid-2 mb-2 flex rounded-xl p-1">
                 {(
                   [
-                    ["file", "Файл"],
-                    ["code", "Вставить HTML"],
+                    ["file", translate("Файл")],
+                    ["code", translate("Вставить HTML")],
                   ] as const
                 ).map(([m, label]) => (
                   <button
@@ -182,7 +184,7 @@ export function ToolDialog() {
                   ) : (
                     <FileCode2 className="size-6 text-highlight" />
                   )}
-                  <span className="text-[14px] font-medium break-all">{fileName || "Выбрать или перетащить файл"}</span>
+                  <span className="text-[14px] font-medium break-all">{fileName || translate("Выбрать или перетащить файл")}</span>
                   {fileName && (
                     <span className="text-[12px] text-muted-foreground">{fileSize(file ? file.size : new Blob([html]).size)}</span>
                   )}
@@ -193,7 +195,7 @@ export function ToolDialog() {
                   onChange={(e) => acceptHtml(e.target.value)}
                   rows={7}
                   spellCheck={false}
-                  aria-label="HTML-код тулзы"
+                  aria-label={translate("HTML-код тулзы")}
                   placeholder={"<!doctype html>\n<html>…"}
                   className="w-full resize-y rounded-lg border bg-background px-3 py-2 font-mono text-[12px] outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
@@ -213,13 +215,13 @@ export function ToolDialog() {
 
           <div>
             <label htmlFor="tool-name" className="mb-1 block text-[13px] font-medium">
-              Название
+              {translate("Название")}
             </label>
             <Input
               id="tool-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Калькулятор интегралов"
+              placeholder={translate("Калькулятор интегралов")}
               maxLength={80}
               autoFocus={!!tool}
             />
@@ -227,7 +229,7 @@ export function ToolDialog() {
 
           {htmlish && (
             <fieldset>
-              <legend className="mb-2 text-[13px] font-medium">Иконка</legend>
+              <legend className="mb-2 text-[13px] font-medium">{translate("Иконка")}</legend>
               <div className="flex flex-wrap gap-2">
                 {ICONS.map((i) => {
                   const Icon = toolIcons[i]
@@ -235,8 +237,8 @@ export function ToolDialog() {
                     <button
                       key={i}
                       type="button"
-                      aria-label={toolIconLabels[i]}
-                      title={toolIconLabels[i]}
+                      aria-label={translate(toolIconLabels[i])}
+                      title={translate(toolIconLabels[i])}
                       aria-pressed={icon === i}
                       onClick={() => {
                         setIcon(i)
@@ -259,10 +261,10 @@ export function ToolDialog() {
 
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={close}>
-              Отмена
+              {translate("Отмена")}
             </Button>
             <Button type="submit" disabled={!ready || busy}>
-              {tool ? "Сохранить" : "Добавить"}
+              {tool ? translate("Сохранить") : translate("Добавить")}
             </Button>
           </DialogFooter>
         </form>

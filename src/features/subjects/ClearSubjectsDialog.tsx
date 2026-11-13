@@ -2,6 +2,7 @@ import { useState } from "react"
 import { useNavigate } from "react-router"
 import { toast } from "sonner"
 import { create } from "zustand"
+import { translate, useLanguage } from "@/app/i18n"
 import { Button } from "@/components/ui/Button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/Dialog"
 import { errorText } from "@/lib/errors"
@@ -14,6 +15,7 @@ const useOpen = create<{ open: boolean; set: (v: boolean) => void }>((set) => ({
 export const openClearSubjects = () => useOpen.getState().set(true)
 
 export function ClearSubjectsDialog() {
+  useLanguage()
   const open = useOpen((s) => s.open)
   const close = () => useOpen.getState().set(false)
   const subjects = useVault((s) => s.subjects)
@@ -26,9 +28,9 @@ export function ClearSubjectsDialog() {
       const undo = await useVault.getState().trashSubjects(subjects.map((s) => s.id))
       close()
       navigate("/")
-      toastUndo("Все предметы в корзине", undo)
+      toastUndo(translate("Все предметы в корзине"), undo)
     } catch (e) {
-      toast.error("Не удалось удалить предметы", { description: errorText(e) })
+      toast.error(translate("Не удалось удалить предметы"), { description: errorText(e) })
     } finally {
       setBusy(false)
     }
@@ -38,9 +40,9 @@ export function ClearSubjectsDialog() {
     <Dialog open={open} onOpenChange={(o) => !o && close()}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>Удалить все предметы?</DialogTitle>
+          <DialogTitle>{translate("Удалить все предметы?")}</DialogTitle>
           <DialogDescription>
-            {plural(subjects.length, ["предмет", "предмета", "предметов"])} со всем содержимым попадут в корзину на 30 дней.
+            {plural(subjects.length, ["предмет", "предмета", "предметов"])} {translate("со всем содержимым попадут в корзину на 30 дней.")}
           </DialogDescription>
         </DialogHeader>
         <ul className="max-h-40 space-y-1 overflow-y-auto text-[14px]">
@@ -52,10 +54,10 @@ export function ClearSubjectsDialog() {
         </ul>
         <DialogFooter>
           <Button variant="ghost" onClick={close}>
-            Отмена
+            {translate("Отмена")}
           </Button>
           <Button variant="destructive" disabled={busy || !subjects.length} onClick={run}>
-            Удалить все
+            {translate("Удалить все")}
           </Button>
         </DialogFooter>
       </DialogContent>

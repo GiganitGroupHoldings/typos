@@ -4,6 +4,7 @@ import { BubbleMenu } from "@tiptap/react/menus"
 import { BetweenHorizontalEnd, BetweenVerticalEnd, PanelTop, Trash2, type LucideIcon } from "lucide-react"
 import { motion } from "motion/react"
 import { type MouseEvent } from "react"
+import { translate, useLanguage } from "@/app/i18n"
 import { useLiquidLens } from "@/components/ui/LiquidLens"
 import { cn } from "@/lib/utils"
 
@@ -52,6 +53,7 @@ function Action({
 const Sep = () => <div aria-hidden className="mx-0.5 h-5 w-px bg-border" />
 
 export function TableMenu({ editor }: { editor: Editor }) {
+  useLanguage()
   const header = useEditorState({ editor, selector: ({ editor: e }) => e.isActive("tableHeader") })
   const c = () => editor.chain().focus()
   const lens = useLiquidLens({ fallback: "liquid liquid-lava" })
@@ -74,17 +76,27 @@ export function TableMenu({ editor }: { editor: Editor }) {
         transition={{ type: "spring", stiffness: 500, damping: 34 }}
 
         role="toolbar"
-        aria-label="Таблица"
+        aria-label={translate("Таблица")}
 
         className={cn(lens.className, "flex items-center gap-0.5 rounded-2xl p-1")}
       >
-        <Action icon={BetweenHorizontalEnd} label="Строка" title="Добавить строку ниже" onClick={() => c().addRowAfter().run()} />
-        <Action icon={BetweenVerticalEnd} label="Столбец" title="Добавить столбец справа" onClick={() => c().addColumnAfter().run()} />
+        <Action
+          icon={BetweenHorizontalEnd}
+          label={translate("Строка")}
+          title={translate("Добавить строку ниже")}
+          onClick={() => c().addRowAfter().run()}
+        />
+        <Action
+          icon={BetweenVerticalEnd}
+          label={translate("Столбец")}
+          title={translate("Добавить столбец справа")}
+          onClick={() => c().addColumnAfter().run()}
+        />
         <Sep />
         <button
           type="button"
-          title="Строка заголовков"
-          aria-label="Шапка таблицы"
+          title={translate("Строка заголовков")}
+          aria-label={translate("Шапка таблицы")}
           aria-pressed={header}
           onMouseDown={keep}
           onClick={() => c().toggleHeaderRow().run()}
@@ -97,9 +109,9 @@ export function TableMenu({ editor }: { editor: Editor }) {
         </button>
         <Sep />
         <Trash2 aria-hidden className="mx-1 size-4 text-muted-foreground" strokeWidth={1.9} />
-        <Action label="строку" title="Удалить строку" onClick={() => c().deleteRow().run()} />
-        <Action label="столбец" title="Удалить столбец" onClick={() => c().deleteColumn().run()} />
-        <Action label="таблицу" title="Удалить таблицу" danger onClick={() => c().deleteTable().run()} />
+        <Action label={translate("строку")} title={translate("Удалить строку")} onClick={() => c().deleteRow().run()} />
+        <Action label={translate("столбец")} title={translate("Удалить столбец")} onClick={() => c().deleteColumn().run()} />
+        <Action label={translate("таблицу")} title={translate("Удалить таблицу")} danger onClick={() => c().deleteTable().run()} />
       </motion.div>
     </BubbleMenu>
   )

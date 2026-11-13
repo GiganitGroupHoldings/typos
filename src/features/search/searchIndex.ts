@@ -39,7 +39,10 @@ export function plainText(md: string): string {
     .trim()
 }
 
-export function buildDocs(data: { subjects: Subject[]; notes: Note[]; pins: Pin[]; tools: Tool[]; boards?: Board[] }): SearchDoc[] {
+export function buildDocs(
+  data: { subjects: Subject[]; notes: Note[]; pins: Pin[]; tools: Tool[]; boards?: Board[] },
+  untitled = "Без названия",
+): SearchDoc[] {
   return [
     ...data.subjects.map((s) => ({
       id: `subject:${s.id}`,
@@ -54,7 +57,7 @@ export function buildDocs(data: { subjects: Subject[]; notes: Note[]; pins: Pin[
       kind: "note" as const,
       refId: n.id,
       subjectId: n.subjectId,
-      title: n.title || "Без названия",
+      title: n.title || untitled,
       text: plainText(n.mapText ? `${n.body}\n${n.mapText}` : n.body),
     })),
     ...data.pins.map((p) => ({

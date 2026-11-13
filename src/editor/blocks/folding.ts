@@ -1,6 +1,7 @@
 import { Extension } from "@tiptap/core"
 import { Plugin, PluginKey, TextSelection, type EditorState, type Transaction } from "@tiptap/pm/state"
 import { Decoration, DecorationSet } from "@tiptap/pm/view"
+import { getLanguage, translate } from "@/app/i18n"
 import { blockPos, foldedBlocks, headingKey, headingLevel, sectionRange } from "./sections"
 
 export const foldingKey = new PluginKey<Set<string>>("folding")
@@ -79,6 +80,7 @@ export const Folding = Extension.create<FoldingOptions>({
         },
         props: {
           decorations(state) {
+            const language = getLanguage()
             const collapsed = foldingKey.getState(state) ?? new Set<string>()
             const { headings, hidden } = foldedBlocks(state.doc, collapsed)
             const decos: Decoration[] = []
@@ -100,7 +102,7 @@ export const Folding = Extension.create<FoldingOptions>({
                     b.type = "button"
                     b.className = "fold-toggle"
                     b.contentEditable = "false"
-                    b.setAttribute("aria-label", folded ? "Развернуть раздел" : "Свернуть раздел")
+                    b.setAttribute("aria-label", folded ? translate("Развернуть раздел") : translate("Свернуть раздел"))
                     b.setAttribute("aria-expanded", String(!folded))
                     b.innerHTML =
                       '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
@@ -117,7 +119,7 @@ export const Folding = Extension.create<FoldingOptions>({
                     })
                     return b
                   },
-                  { side: -1, ignoreSelection: true, key: `fold-${index}-${folded ? 1 : 0}` },
+                  { side: -1, ignoreSelection: true, key: `fold-${index}-${folded ? 1 : 0}-${language}` },
                 ),
               )
             })

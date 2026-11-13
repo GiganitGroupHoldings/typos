@@ -1,5 +1,6 @@
 import { ArrowLeft, ChevronRight, Focus, List as ListIcon, Pin, Search } from "lucide-react"
 import { Link, useLocation, useNavigate, useParams } from "react-router"
+import { translate, useLanguage } from "@/app/i18n"
 import { useUi } from "@/app/store"
 import { Button } from "@/components/ui/Button"
 import { Kbd } from "@/components/ui/Kbd"
@@ -11,12 +12,13 @@ import { useBoard, useNote, useSubject, useTool } from "@/vault/hooks"
 import { WindowControls } from "./WindowControls"
 
 export function TopBar() {
+  useLanguage()
   const { subjectId, noteId, toolId, boardId } = useParams()
   const subject = useSubject(subjectId)
   const note = useNote(noteId)
   const tool = useTool(toolId)
   const board = useBoard(boardId)
-  const leaf = note ? note.title || "Без названия" : (tool?.name ?? board?.name)
+  const leaf = note ? note.title || translate("Без названия") : (tool?.name ?? board?.name)
   const pinsOpen = useUi((s) => s.pinsOpen)
   const togglePins = useUi((s) => s.togglePins)
   const focusMode = useUi((s) => s.focusMode)
@@ -37,7 +39,7 @@ export function TopBar() {
         <Button
           variant="ghost"
           size="icon-sm"
-          aria-label="Назад"
+          aria-label={translate("Назад")}
           className="size-11 rounded-full md:hidden"
           onClick={() => navigate(backTarget)}
         >
@@ -47,10 +49,13 @@ export function TopBar() {
 
       <Tooltip>
         <TooltipTrigger asChild>
-          <SidebarTrigger aria-label="Показать или скрыть предметы" className={cn("max-md:size-11", subject && "max-md:hidden")} />
+          <SidebarTrigger
+            aria-label={translate("Показать или скрыть предметы")}
+            className={cn("max-md:size-11", subject && "max-md:hidden")}
+          />
         </TooltipTrigger>
         <TooltipContent className="flex items-center gap-2">
-          Предметы <Kbd>Ctrl B</Kbd>
+          {translate("Предметы")} <Kbd>Ctrl B</Kbd>
         </TooltipContent>
       </Tooltip>
 
@@ -58,7 +63,7 @@ export function TopBar() {
 
       <nav
         data-tauri-drag-region
-        aria-label="Путь"
+        aria-label={translate("Путь")}
         className="hidden min-w-0 flex-1 items-center gap-1 px-1 text-[13px] text-muted-foreground md:flex"
       >
         {subject ? (
@@ -85,7 +90,7 @@ export function TopBar() {
         <Button
           variant="ghost"
           size="icon-sm"
-          aria-label="Содержание предмета"
+          aria-label={translate("Содержание предмета")}
           className="size-11 rounded-full md:hidden"
           onClick={() => setListOpen(true)}
         >
@@ -99,7 +104,7 @@ export function TopBar() {
             <Button
               variant="ghost"
               size="icon-sm"
-              aria-label="Поиск"
+              aria-label={translate("Поиск")}
               className="size-11 rounded-full hover:bg-foreground/5 md:size-7"
               onClick={() => setPaletteOpen(true)}
             >
@@ -107,7 +112,7 @@ export function TopBar() {
             </Button>
           </TooltipTrigger>
           <TooltipContent className="flex items-center gap-2">
-            Поиск <Kbd>Ctrl K</Kbd>
+            {translate("Поиск")} <Kbd>Ctrl K</Kbd>
           </TooltipContent>
         </Tooltip>
         <Tooltip>
@@ -115,7 +120,7 @@ export function TopBar() {
             <Button
               variant="ghost"
               size="icon-sm"
-              aria-label="Режим фокуса"
+              aria-label={translate("Режим фокуса")}
               aria-pressed={focusMode}
               onClick={toggleFocus}
               className={cn("rounded-full hover:bg-foreground/5 max-md:hidden", focusMode && "liquid-active hover:bg-transparent")}
@@ -124,7 +129,7 @@ export function TopBar() {
             </Button>
           </TooltipTrigger>
           <TooltipContent className="flex items-center gap-2">
-            Режим фокуса <Kbd>Ctrl \</Kbd>
+            {translate("Режим фокуса")} <Kbd>Ctrl \</Kbd>
           </TooltipContent>
         </Tooltip>
         <Tooltip>
@@ -132,7 +137,7 @@ export function TopBar() {
             <Button
               variant="ghost"
               size="icon-sm"
-              aria-label="Закреп"
+              aria-label={translate("Закреп")}
               aria-pressed={pinsOpen}
               onClick={togglePins}
               className={cn("size-11 rounded-full hover:bg-foreground/5 md:size-7", pinsOpen && "liquid-active hover:bg-transparent")}
@@ -141,7 +146,7 @@ export function TopBar() {
             </Button>
           </TooltipTrigger>
           <TooltipContent className="flex items-center gap-2">
-            Закреп <Kbd>Ctrl J</Kbd>
+            {translate("Закреп")} <Kbd>Ctrl J</Kbd>
           </TooltipContent>
         </Tooltip>
       </div>

@@ -1,4 +1,5 @@
 import { toast } from "sonner"
+import { translate } from "@/app/i18n"
 import { importHtmlFile } from "@/features/tools/ToolDialog"
 import { errorText } from "@/lib/errors"
 import { isImageFile, isMarkdownFile, pickFiles } from "@/lib/files"
@@ -17,12 +18,14 @@ export async function importFiles(subjectId: string, files: File[], go: Go) {
       const notes = await useVault.getState().importNotes(subjectId, files)
       if (notes.length === 1) {
         const n = notes[0]
-        toast.success(`Конспект «${n.title}» добавлен`, { action: { label: "Открыть", onClick: () => go(`/s/${n.subjectId}/n/${n.id}`) } })
+        toast.success(translate("Конспект «{0}» добавлен", n.title), {
+          action: { label: translate("Открыть"), onClick: () => go(`/s/${n.subjectId}/n/${n.id}`) },
+        })
       } else {
-        toast.success(`Добавлено ${plural(notes.length, ["конспект", "конспекта", "конспектов"])}`)
+        toast.success(translate("Добавлено {0}", plural(notes.length, ["конспект", "конспекта", "конспектов"])))
       }
     } catch (err) {
-      toast.error("Не удалось импортировать конспекты", { description: errorText(err) })
+      toast.error(translate("Не удалось импортировать конспекты"), { description: errorText(err) })
     }
   }
 
@@ -36,15 +39,17 @@ export async function importFiles(subjectId: string, files: File[], go: Go) {
           : await useVault.getState().importProjectFile(subjectId, { name: f.name, blob: f }),
       )
     } catch (err) {
-      toast.error(`Не удалось добавить «${f.name}»`, { description: errorText(err) })
+      toast.error(translate("Не удалось добавить «{0}»", f.name), { description: errorText(err) })
     }
   }
   if (added.length === 1) {
     const t = added[0]
-    toast.success(`«${t.name}» в проектах`, { action: { label: "Открыть", onClick: () => go(`/s/${t.subjectId}/t/${t.id}`) } })
+    toast.success(translate("«{0}» в проектах", t.name), {
+      action: { label: translate("Открыть"), onClick: () => go(`/s/${t.subjectId}/t/${t.id}`) },
+    })
   } else if (added.length > 1) {
-    toast.success(`В проекты добавлено ${plural(added.length, ["файл", "файла", "файлов"])}`, {
-      action: { label: "Показать", onClick: () => go(`/s/${subjectId}?tab=tools`) },
+    toast.success(translate("В проекты добавлено {0}", plural(added.length, ["файл", "файла", "файлов"])), {
+      action: { label: translate("Показать"), onClick: () => go(`/s/${subjectId}?tab=tools`) },
     })
   }
 }

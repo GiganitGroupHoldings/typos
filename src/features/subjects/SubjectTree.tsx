@@ -2,6 +2,7 @@ import { ChevronRight, FileText, FolderOpen, LayoutDashboard, Pin } from "lucide
 import { AnimatePresence, LayoutGroup, motion } from "motion/react"
 import { useState } from "react"
 import { Link, useLocation, useParams, useSearchParams } from "react-router"
+import { translate, useLanguage } from "@/app/i18n"
 import { SidebarMenu, SidebarMenuButton } from "@/components/ui/Sidebar"
 import { dur, easeOut, spring } from "@/lib/motion"
 import { cn } from "@/lib/utils"
@@ -39,6 +40,7 @@ const sections: { tab: SubjectTab; label: string; icon: typeof FileText }[] = [
 ]
 
 function SubjectNode({ subject }: { subject: Subject }) {
+  useLanguage()
   const { subjectId } = useParams()
   const [params] = useSearchParams()
   const { pathname } = useLocation()
@@ -63,7 +65,7 @@ function SubjectNode({ subject }: { subject: Subject }) {
         </SidebarMenuButton>
         <button
           type="button"
-          aria-label={open ? `Свернуть «${subject.name}»` : `Развернуть «${subject.name}»`}
+          aria-label={open ? translate("Свернуть «{0}»", subject.name) : translate("Развернуть «{0}»", subject.name)}
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
           className="absolute top-0 right-0 flex size-11 items-center justify-center rounded-lg text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:outline-none"
@@ -99,7 +101,7 @@ function SubjectNode({ subject }: { subject: Subject }) {
                     )}
                   >
                     <Icon className="size-[18px] shrink-0 opacity-70" />
-                    <span className="flex-1 truncate">{s.label}</span>
+                    <span className="flex-1 truncate">{translate(s.label)}</span>
                     <span className="shrink-0 text-[13px] text-sidebar-foreground tabular-nums">{counts[s.tab]}</span>
                   </Link>
                 </li>

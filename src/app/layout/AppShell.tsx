@@ -2,6 +2,7 @@ import { useEffect } from "react"
 import { Outlet, useLocation, useParams, useSearchParams } from "react-router"
 import { toast } from "sonner"
 import { useAccentSync } from "@/app/accent"
+import { translate } from "@/app/i18n"
 import { useUi } from "@/app/store"
 import { useHotkeys } from "@/app/useHotkeys"
 import { SidebarInset, SidebarProvider, useSidebar } from "@/components/ui/Sidebar"
@@ -50,11 +51,11 @@ function useServerSync() {
     adapter.start({
       onChanged: () => void useVault.getState().refresh(),
       onConflict: (path, copy) =>
-        toast.warning("Файл изменён на двух устройствах", {
-          description: `Обе версии «${basename(path)}» сохранены. Копия: «${basename(copy)}».`,
+        toast.warning(translate("Файл изменён на двух устройствах"), {
+          description: translate("Обе версии «{0}» сохранены. Копия: «{1}».", basename(path), basename(copy)),
           duration: 15_000,
         }),
-      onReconnected: () => toast.success("Связь с сервером восстановлена", { id: "connection" }),
+      onReconnected: () => toast.success(translate("Связь с сервером восстановлена"), { id: "connection" }),
     })
     return () => adapter.stop()
   }, [adapter])

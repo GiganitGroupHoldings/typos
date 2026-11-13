@@ -1,5 +1,6 @@
 import { isTauri } from "@tauri-apps/api/core"
 import { Minus, Plus, Settings } from "lucide-react"
+import { translate, useLanguage } from "@/app/i18n"
 import { useUi } from "@/app/store"
 import { Button } from "@/components/ui/Button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/Dialog"
@@ -7,6 +8,8 @@ import { SidebarMenuButton } from "@/components/ui/Sidebar"
 import { SUBJECT_COLORS } from "@/lib/subjectPalette"
 
 export function SettingsDialog() {
+  const language = useLanguage()
+  const setLanguage = useUi((s) => s.setLanguage)
   const theme = useUi((s) => s.theme)
   const setTheme = useUi((s) => s.setTheme)
   const backdrop = useUi((s) => s.backdrop)
@@ -22,21 +25,36 @@ export function SettingsDialog() {
       <DialogTrigger asChild>
         <SidebarMenuButton>
           <Settings />
-          <span>Настройки</span>
+          <span>{translate("Настройки")}</span>
         </SidebarMenuButton>
       </DialogTrigger>
       <DialogContent aria-describedby={undefined} className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Настройки</DialogTitle>
+          <DialogTitle>{translate("Настройки")}</DialogTitle>
         </DialogHeader>
+        <label className="flex flex-wrap items-center justify-between gap-2 font-medium">
+          {translate("Язык")}
+          <select
+            className="min-h-11 rounded-lg border border-input bg-background px-3 text-sm"
+            value={language}
+            onChange={(event) => setLanguage(event.currentTarget.value === "en" ? "en" : "ru")}
+          >
+            <option value="ru" lang="ru">
+              Русский
+            </option>
+            <option value="en" lang="en">
+              English
+            </option>
+          </select>
+        </label>
         <fieldset className="grid gap-2">
-          <legend className="mb-2 font-medium">Тема</legend>
+          <legend className="mb-2 font-medium">{translate("Тема")}</legend>
           <div className="flex flex-wrap gap-1">
             {(
               [
-                ["light", "Светлая"],
-                ["dark", "Тёмная"],
-                ["system", "Как в системе"],
+                ["light", translate("Светлая")],
+                ["dark", translate("Тёмная")],
+                ["system", translate("Как в системе")],
               ] as const
             ).map(([value, label]) => (
               <Button
@@ -52,12 +70,12 @@ export function SettingsDialog() {
           </div>
         </fieldset>
         <fieldset className="grid gap-2">
-          <legend className="mb-2 font-medium">Фон</legend>
+          <legend className="mb-2 font-medium">{translate("Фон")}</legend>
           <div className="flex gap-1">
             {(
               [
-                ["nebula", "Туманность"],
-                ["metal", "Металл"],
+                ["nebula", translate("Туманность")],
+                ["metal", translate("Металл")],
               ] as const
             ).map(([value, label]) => (
               <Button
@@ -73,18 +91,18 @@ export function SettingsDialog() {
           </div>
         </fieldset>
         <fieldset className="grid gap-3">
-          <legend className="mb-2 font-medium">Акцентный цвет</legend>
+          <legend className="mb-2 font-medium">{translate("Акцентный цвет")}</legend>
           <label className="flex cursor-pointer items-center gap-2">
             <input type="checkbox" checked={responsive} onChange={(event) => setResponsive(event.target.checked)} />
-            Цвет по предмету
+            {translate("Цвет по предмету")}
           </label>
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Акцентные цвета">
+          <div className="flex flex-wrap gap-2" role="group" aria-label={translate("Акцентные цвета")}>
             {SUBJECT_COLORS.map((swatch) => (
               <button
                 key={swatch.id}
                 type="button"
                 disabled={responsive}
-                aria-label={swatch.name}
+                aria-label={translate(swatch.name)}
                 className="size-6 rounded-full border border-foreground/20 outline-offset-2 focus-visible:outline-2 disabled:opacity-35"
                 style={{ background: `var(--subject-${swatch.id})` }}
                 onClick={() => {
@@ -99,10 +117,10 @@ export function SettingsDialog() {
             ))}
           </div>
           <label className="flex items-center justify-between gap-3">
-            Свой цвет
+            {translate("Свой цвет")}
             <input
               type="color"
-              aria-label="Свой цвет"
+              aria-label={translate("Свой цвет")}
               value={color}
               disabled={responsive}
               onInput={(event) => setColor(event.currentTarget.value)}
@@ -112,12 +130,12 @@ export function SettingsDialog() {
         </fieldset>
         {isTauri() && (
           <fieldset className="grid gap-2">
-            <legend className="mb-2 font-medium">Масштаб интерфейса</legend>
+            <legend className="mb-2 font-medium">{translate("Масштаб интерфейса")}</legend>
             <div className="flex items-center gap-2">
               <Button
                 size="icon-sm"
                 variant="outline"
-                aria-label="Уменьшить масштаб"
+                aria-label={translate("Уменьшить масштаб")}
                 disabled={zoom <= 50}
                 onClick={() => setZoom(zoom - 10)}
               >
@@ -129,14 +147,14 @@ export function SettingsDialog() {
               <Button
                 size="icon-sm"
                 variant="outline"
-                aria-label="Увеличить масштаб"
+                aria-label={translate("Увеличить масштаб")}
                 disabled={zoom >= 200}
                 onClick={() => setZoom(zoom + 10)}
               >
                 <Plus />
               </Button>
               <Button size="sm" variant="ghost" onClick={() => setZoom(100)}>
-                Сбросить
+                {translate("Сбросить")}
               </Button>
             </div>
           </fieldset>

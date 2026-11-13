@@ -1,3 +1,4 @@
+import { translate } from "@/app/i18n"
 import { mapText, parseNoteMap, serializeNoteMap, type NoteMap } from "@/editor/map/types"
 import { normalizeMarkdownMath } from "@/editor/texImport"
 import { BOARD_EXT, emptyBoard, parseBoard, serializeBoard, type BoardData } from "@/features/boards/model"
@@ -389,7 +390,7 @@ function pinFile(id: string, order: number, p: PinInput) {
 function pinFields(input: PinInput, previous?: Pin): PinInput {
   const kind = input.kind ?? previous?.kind ?? "content"
   const url = kind === "link" ? pinUrl(input.url ?? previous?.url) : undefined
-  if (kind === "link" && !url) throw new Error("Вставь корректную ссылку на сайт: https://example.com.")
+  if (kind === "link" && !url) throw new Error(translate("Вставь корректную ссылку на сайт: https://example.com."))
   return {
     title: input.title.trim(),
     tex: clean(input.tex),
@@ -445,13 +446,13 @@ export function guessToolName(html: string, fileName?: string): string {
     ?.replace(/&amp;/g, "&")
     .replace(/\s+/g, " ")
     .trim()
-  return title || fromFile || "Проект"
+  return title || fromFile || translate("Проект")
 }
 
 export async function importTool(a: VaultAdapter, subject: Subject, input: { name: string; html: string; icon: ToolIcon }): Promise<Tool> {
   const id = genId()
   const html = setHtmlMeta(setHtmlMeta(input.html, "studynotes-id", id), "studynotes-icon", input.icon)
-  const path = await uniquePath(a, joinPath(subject.dir, PROJECTS_DIR), safeName(input.name, "Проект"), ".html")
+  const path = await uniquePath(a, joinPath(subject.dir, PROJECTS_DIR), safeName(input.name, translate("Проект")), ".html")
   await a.writeText(path, html)
   return {
     id,

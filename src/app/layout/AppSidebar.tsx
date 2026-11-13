@@ -3,6 +3,7 @@ import { motion } from "motion/react"
 import { useState } from "react"
 import { Link, useLocation } from "react-router"
 import { shuffleBackground } from "@/app/accent"
+import { translate, useLanguage } from "@/app/i18n"
 import { useInstallPrompt } from "@/app/pwa"
 import { useUi } from "@/app/store"
 import { TyposMark } from "@/components/TyposMark"
@@ -31,6 +32,7 @@ import { useVault } from "@/vault/store"
 import { SettingsDialog } from "./SettingsDialog"
 
 export function AppSidebar() {
+  useLanguage()
   const { pathname } = useLocation()
   const setPaletteOpen = useUi((s) => s.setPaletteOpen)
   const storage = useVault((s) => s.adapter)
@@ -45,8 +47,8 @@ export function AppSidebar() {
         <div data-tauri-drag-region className="flex items-center gap-2 px-1">
           <motion.button
             type="button"
-            aria-label="Перемешать фон"
-            title="Перемешать фон"
+            aria-label={translate("Перемешать фон")}
+            title={translate("Перемешать фон")}
             onClick={() => {
               shuffleBackground()
               setSpins((n) => n + 1)
@@ -67,7 +69,7 @@ export function AppSidebar() {
           className="liquid-2 flex h-11 items-center gap-2.5 rounded-xl px-3 text-base text-sidebar-foreground transition-colors duration-(--dur-fast) hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:outline-none"
         >
           <Search className="size-5" />
-          <span className="flex-1 text-left">Поиск</span>
+          <span className="flex-1 text-left">{translate("Поиск")}</span>
           <Kbd>Ctrl K</Kbd>
         </button>
       </SidebarHeader>
@@ -80,7 +82,7 @@ export function AppSidebar() {
                 <SidebarMenuButton asChild isActive={pathname === "/"}>
                   <Link to="/">
                     <Home />
-                    <span>Главная</span>
+                    <span>{translate("Главная")}</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -89,11 +91,11 @@ export function AppSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel className="h-11 text-sm">Предметы</SidebarGroupLabel>
+          <SidebarGroupLabel className="h-11 text-sm">{translate("Предметы")}</SidebarGroupLabel>
           <SidebarGroupAction
             className="top-2 right-2 size-11 [&>svg]:size-5"
-            title="Новый предмет"
-            aria-label="Новый предмет"
+            title={translate("Новый предмет")}
+            aria-label={translate("Новый предмет")}
             onClick={openNewSubject}
           >
             <Plus />
@@ -110,7 +112,7 @@ export function AppSidebar() {
             <SidebarMenuItem>
               <SidebarMenuButton onClick={() => void install.install()} className="text-highlight">
                 <MonitorDown />
-                <span>Установить приложение</span>
+                <span>{translate("Установить приложение")}</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           )}
@@ -118,7 +120,7 @@ export function AppSidebar() {
             <SidebarMenuButton asChild isActive={pathname === "/trash"}>
               <Link to="/trash" viewTransition>
                 <Trash2 />
-                <span>Корзина</span>
+                <span>{translate("Корзина")}</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -126,14 +128,17 @@ export function AppSidebar() {
             <SidebarMenuButton asChild>
               <Link to="/welcome">
                 {storage?.kind === "remote" ? <Server /> : <FolderOpen />}
-                <span className="truncate">{upperFirst(storageLabel(storage) ?? "Хранилище браузера")}</span>
+                <span className="truncate">{upperFirst(storageLabel(storage) ?? translate("Хранилище браузера"))}</span>
                 {storage?.kind === "remote" && pending > 0 && (
-                  <span className="ml-auto shrink-0 text-[11px] text-muted-foreground tabular-nums" title="Ожидают отправки">
+                  <span className="ml-auto shrink-0 text-[11px] text-muted-foreground tabular-nums" title={translate("Ожидают отправки")}>
                     ↑{pending}
                   </span>
                 )}
                 {(connection === "offline" || connection === "revoked") && (
-                  <span className={cn("size-2 shrink-0 rounded-full bg-destructive", !pending && "ml-auto")} aria-label="нет связи" />
+                  <span
+                    className={cn("size-2 shrink-0 rounded-full bg-destructive", !pending && "ml-auto")}
+                    aria-label={translate("нет связи")}
+                  />
                 )}
               </Link>
             </SidebarMenuButton>

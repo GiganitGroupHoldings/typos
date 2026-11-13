@@ -1,5 +1,6 @@
 import { Loader2, Minus, Plus } from "lucide-react"
 import { useEffect, useId, useRef, useState } from "react"
+import { translate, useLanguage } from "@/app/i18n"
 import {
   COL_WIDTH,
   columnLabel,
@@ -16,6 +17,7 @@ import {
 } from "./viewers/spreadsheetProtocol"
 
 export default function SpreadsheetView({ blob, title }: { blob: Blob; title: string }) {
+  const language = useLanguage()
   const sheetSelectId = useId()
   const host = useRef<HTMLDivElement>(null)
   const worker = useRef<Worker | null>(null)
@@ -63,7 +65,8 @@ export default function SpreadsheetView({ blob, title }: { blob: Blob; title: st
     let current: Worker | null = null
     let timer: ReturnType<typeof globalThis.setTimeout> | undefined
     void (async () => {
-      if (blob.size > MAX_FILE_BYTES) throw new Error("Файл больше 40 МБ. Открой его в Excel или сохрани нужный лист отдельным файлом.")
+      if (blob.size > MAX_FILE_BYTES)
+        throw new Error(translate("Файл больше 40 МБ. Открой его в Excel или сохрани нужный лист отдельным файлом."))
       current = new Worker(new URL("./viewers/spreadsheet.worker.ts", import.meta.url), { type: "module" })
       worker.current = current
       current.onmessage = (event: MessageEvent<SpreadsheetReply>) => {
@@ -95,14 +98,14 @@ export default function SpreadsheetView({ blob, title }: { blob: Blob; title: st
           setError(reply.message)
         }
       }
-      current.onerror = () => alive && setError("Не удалось запустить просмотр таблицы. Скачай файл и открой его в Excel.")
+      current.onerror = () => alive && setError(translate("Не удалось запустить просмотр таблицы. Скачай файл и открой его в Excel."))
       timer = globalThis.setTimeout(() => {
         current?.terminate()
-        if (alive) setError("Таблица открывается слишком долго. Сохрани нужный лист отдельным файлом и попробуй снова.")
+        if (alive) setError(translate("Таблица открывается слишком долго. Сохрани нужный лист отдельным файлом и попробуй снова."))
       }, 30_000)
       const data = await blob.arrayBuffer()
       if (alive) current.postMessage({ type: "open", data } satisfies SpreadsheetRequest, [data])
-    })().catch((e: unknown) => alive && setError(e instanceof Error ? e.message : "Не удалось прочитать файл."))
+    })().catch((e: unknown) => alive && setError(e instanceof Error ? e.message : translate("Не удалось прочитать файл.")))
     return () => {
       alive = false
       clearTimeout(timer)
@@ -136,7 +139,7 @@ export default function SpreadsheetView({ blob, title }: { blob: Blob; title: st
     } satisfies SpreadsheetRequest)
     pendingTimer.current = globalThis.setTimeout(() => {
       worker.current?.terminate()
-      setError("Лист открывается слишком долго. Сохрани его отдельным файлом и попробуй снова.")
+      setError(translate("Лист открывается слишком долго. Сохрани его отдельным файлом и попробуй снова."))
     }, 30_000)
     return () => clearTimeout(pendingTimer.current)
   }, [names, sheet, row, col, windowRows, windowCols, error, needsLayout, previewMode])
@@ -163,11 +166,11 @@ export default function SpreadsheetView({ blob, title }: { blob: Blob; title: st
     <div className="flex size-full min-h-0 flex-col bg-background">
       <div className="flex shrink-0 flex-wrap items-center gap-2 border-b px-3 py-2 text-[13px]">
         <label className="shrink-0" htmlFor={sheetSelectId}>
-          Лист
+          {translate("Лист")}
         </label>
         <select
           id={sheetSelectId}
-          aria-label="Лист таблицы"
+          aria-label={translate("Лист таблицы")}
           value={sheet}
           disabled={!names.length || !!error}
           onChange={(e) => {
@@ -183,10 +186,10 @@ export default function SpreadsheetView({ blob, title }: { blob: Blob; title: st
             </option>
           ))}
         </select>
-        <div role="group" aria-label="Масштаб таблицы" className="flex shrink-0 items-center gap-1">
+        <div role="group" aria-label={translate("Масштаб таблицы")} className="flex shrink-0 items-center gap-1">
           <button
             type="button"
-            aria-label="Уменьшить таблицу"
+            aria-label={translate("Уменьшить таблицу")}
             disabled={!layout || zoom <= Math.min(0.1, fitZoom)}
             onClick={() => changeZoom(zoom / 1.25)}
             className="rounded border p-1 disabled:opacity-40"
@@ -195,16 +198,16 @@ export default function SpreadsheetView({ blob, title }: { blob: Blob; title: st
           </button>
           <button
             type="button"
-            aria-label="Масштаб таблицы 100%"
-            title="Вернуть 100%"
+            aria-label={translate("Масштаб таблицы 100%")}
+            title={translate("Вернуть 100%")}
             onClick={() => changeZoom(1)}
             className="min-w-14 rounded px-1 py-1 tabular-nums"
           >
-            {new Intl.NumberFormat("ru", { maximumFractionDigits: zoom < 0.001 ? 6 : 1 }).format(zoom * 100)}%
+            {new Intl.NumberFormat(language, { maximumFractionDigits: zoom < 0.001 ? 6 : 1 }).format(zoom * 100)}%
           </button>
           <button
             type="button"
-            aria-label="Увеличить таблицу"
+            aria-label={translate("Увеличить таблицу")}
             disabled={!layout || zoom >= 4}
             onClick={() => changeZoom(zoom * 1.25)}
             className="rounded border p-1 disabled:opacity-40"
@@ -218,14 +221,16 @@ export default function SpreadsheetView({ blob, title }: { blob: Blob; title: st
             onClick={() => changeZoom("fit")}
             className="ml-1 rounded border px-2 py-1 disabled:opacity-40"
           >
-            Вместить целиком
+            {translate("Вместить целиком")}
           </button>
         </div>
         {busy && !previewMode && !error && (
-          <Loader2 aria-label="Загрузка листа" className="size-4 shrink-0 animate-spin text-muted-foreground" />
+          <Loader2 aria-label={translate("Загрузка листа")} className="size-4 shrink-0 animate-spin text-muted-foreground" />
         )}
         <span className="ml-auto truncate text-muted-foreground">
-          {page ? `${rows.toLocaleString("ru")} строк · ${cols.toLocaleString("ru")} столбцов` : "Открываю…"}
+          {page
+            ? translate("{0} строк · {1} столбцов", rows.toLocaleString(language), cols.toLocaleString(language))
+            : translate("Открываю…")}
         </span>
       </div>
       <div
@@ -254,16 +259,16 @@ export default function SpreadsheetView({ blob, title }: { blob: Blob; title: st
       >
         {error ? (
           <p role="alert" className="p-6 text-center text-[13px] text-muted-foreground">
-            {error}
+            {translate(error)}
           </p>
         ) : page && rows === 0 ? (
-          <p className="p-6 text-center text-[13px] text-muted-foreground">Пустой лист</p>
+          <p className="p-6 text-center text-[13px] text-muted-foreground">{translate("Пустой лист")}</p>
         ) : previewMode ? (
           <div className="relative bg-white" style={{ width: sheetWidth * zoom, height: sheetHeight * zoom }}>
             <canvas
               ref={previewCanvas}
               role="img"
-              aria-label={`${title} — обзор таблицы`}
+              aria-label={translate("{0} — обзор таблицы", title)}
               className="sticky top-0 left-0 block"
               style={{ width: previewWidth, height: previewHeight }}
             />
@@ -338,7 +343,7 @@ export default function SpreadsheetView({ blob, title }: { blob: Blob; title: st
       </div>
       {page?.info.truncated && (
         <p className="shrink-0 border-t px-3 py-2 text-[12px] text-muted-foreground">
-          Показаны первые 100 000 строк листа. Полный файл доступен для скачивания.
+          {translate("Показаны первые 100 000 строк листа. Полный файл доступен для скачивания.")}
         </p>
       )}
     </div>

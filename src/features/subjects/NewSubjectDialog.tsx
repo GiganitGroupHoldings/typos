@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react"
 import { useNavigate } from "react-router"
 import { toast } from "sonner"
 import { create } from "zustand"
+import { translate, useLanguage } from "@/app/i18n"
 import { Button } from "@/components/ui/Button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/Dialog"
 import { Input } from "@/components/ui/Input"
@@ -20,6 +21,7 @@ export const openNewSubject = () => useDialog.getState().set(true)
 export const openEditSubject = (id: string) => useDialog.getState().set(true, id)
 
 export function NewSubjectDialog() {
+  useLanguage()
   const open = useDialog((s) => s.open)
   const editId = useDialog((s) => s.editId)
   const setOpen = (v: boolean) => useDialog.getState().set(v, v ? editId : undefined)
@@ -53,7 +55,7 @@ export function NewSubjectDialog() {
         navigate(`/s/${s.id}`)
       }
     } catch (err) {
-      toast.error(editing ? "Не удалось сохранить предмет" : "Не удалось создать предмет", {
+      toast.error(editing ? translate("Не удалось сохранить предмет") : translate("Не удалось создать предмет"), {
         description: errorText(err),
       })
     } finally {
@@ -66,35 +68,35 @@ export function NewSubjectDialog() {
       <DialogContent aria-describedby={undefined} className="sm:max-w-md">
         <form onSubmit={submit} className="contents">
           <DialogHeader>
-            <DialogTitle>{editing ? "Изменить предмет" : "Новый предмет"}</DialogTitle>
+            <DialogTitle>{editing ? translate("Изменить предмет") : translate("Новый предмет")}</DialogTitle>
           </DialogHeader>
 
           <div className="flex items-center gap-3">
             <SubjectBadge subject={{ id: "", name, color, icon, order: 0, dir: "" }} size="lg" />
             <div className="flex-1">
               <label htmlFor="subject-name" className="mb-1 block text-[13px] font-medium">
-                Название
+                {translate("Название")}
               </label>
               <Input
                 id="subject-name"
                 autoFocus
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Матанализ"
+                placeholder={translate("Матанализ")}
                 maxLength={80}
               />
             </div>
           </div>
 
           <fieldset>
-            <legend className="mb-2 text-[13px] font-medium">Цвет</legend>
+            <legend className="mb-2 text-[13px] font-medium">{translate("Цвет")}</legend>
             <div className="flex flex-wrap gap-2">
               {SUBJECT_COLORS.map(({ id: c, name: colorName }) => (
                 <button
                   key={c}
                   type="button"
-                  aria-label={colorName}
-                  title={colorName}
+                  aria-label={translate(colorName)}
+                  title={translate(colorName)}
                   aria-pressed={color === c}
                   onClick={() => setColor(c)}
                   style={{ background: `var(--subject-${c})` }}
@@ -108,7 +110,7 @@ export function NewSubjectDialog() {
           </fieldset>
 
           <fieldset>
-            <legend className="mb-2 text-[13px] font-medium">Иконка</legend>
+            <legend className="mb-2 text-[13px] font-medium">{translate("Иконка")}</legend>
             <div className="flex flex-wrap gap-2">
               {SUBJECT_ICONS.map(({ id: i, label }) => {
                 const Icon = subjectIcons[i]
@@ -116,8 +118,8 @@ export function NewSubjectDialog() {
                   <button
                     key={i}
                     type="button"
-                    aria-label={label}
-                    title={label}
+                    aria-label={translate(label)}
+                    title={translate(label)}
                     aria-pressed={icon === i}
                     onClick={() => setIcon(i)}
                     className={cn(
@@ -136,10 +138,10 @@ export function NewSubjectDialog() {
 
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
-              Отмена
+              {translate("Отмена")}
             </Button>
             <Button type="submit" disabled={!name.trim() || busy}>
-              {editing ? "Сохранить" : "Создать"}
+              {editing ? translate("Сохранить") : translate("Создать")}
             </Button>
           </DialogFooter>
         </form>

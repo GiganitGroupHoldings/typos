@@ -1,4 +1,5 @@
 import { ArrowDown, ArrowUp, Maximize2, MoreHorizontal, Pencil, Trash2 } from "lucide-react"
+import { translate, useLanguage } from "@/app/i18n"
 import { useUi } from "@/app/store"
 import { Button } from "@/components/ui/Button"
 import {
@@ -15,6 +16,7 @@ import { useVault } from "@/vault/store"
 import { openPinEditor } from "./PinEditorDialog"
 
 export function PinActions({ pin, siblings, className }: { pin: Pin; siblings: Pin[]; className?: string }) {
+  useLanguage()
   const openWindow = useUi((s) => s.openWindow)
   const closeWindow = useUi((s) => s.closeWindow)
   const index = siblings.findIndex((p) => p.id === pin.id)
@@ -29,7 +31,7 @@ export function PinActions({ pin, siblings, className }: { pin: Pin; siblings: P
   const remove = async () => {
     closeWindow(`pin:${pin.id}`)
     const undo = await useVault.getState().trashPin(pin.id)
-    toastUndo(`«${pin.title}» в корзине`, undo)
+    toastUndo(translate("«{0}» в корзине", pin.title), undo)
   }
 
   return (
@@ -38,7 +40,7 @@ export function PinActions({ pin, siblings, className }: { pin: Pin; siblings: P
         <Button
           variant="ghost"
           size="icon-xs"
-          aria-label={`Действия: ${pin.title}`}
+          aria-label={translate("Действия: {0}", pin.title)}
           className={cn(className)}
           onClick={(e) => e.stopPropagation()}
         >
@@ -47,20 +49,20 @@ export function PinActions({ pin, siblings, className }: { pin: Pin; siblings: P
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
         <DropdownMenuItem onSelect={() => openPinEditor({ subjectId: pin.subjectId, pinId: pin.id })}>
-          <Pencil /> Изменить
+          <Pencil /> {translate("Изменить")}
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => openWindow("pin", pin.id)}>
-          <Maximize2 /> В отдельном окне
+          <Maximize2 /> {translate("В отдельном окне")}
         </DropdownMenuItem>
         <DropdownMenuItem disabled={index <= 0} onSelect={() => move(-1)}>
-          <ArrowUp /> Выше
+          <ArrowUp /> {translate("Выше")}
         </DropdownMenuItem>
         <DropdownMenuItem disabled={index < 0 || index >= siblings.length - 1} onSelect={() => move(1)}>
-          <ArrowDown /> Ниже
+          <ArrowDown /> {translate("Ниже")}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem variant="destructive" onSelect={remove}>
-          <Trash2 /> Удалить
+          <Trash2 /> {translate("Удалить")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

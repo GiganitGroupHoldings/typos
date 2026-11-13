@@ -1,3 +1,5 @@
+import { translate } from "@/app/i18n"
+
 export interface RemoteConfig {
   url: string
 
@@ -10,15 +12,15 @@ export interface RemoteConfig {
 
 export function parseRemoteLink(text: string): RemoteConfig {
   const raw = text.trim()
-  if (!/^typos:\/\//i.test(raw)) throw new Error("Ссылка TYPOS должна начинаться с typos://")
+  if (!/^typos:\/\//i.test(raw)) throw new Error(translate("Ссылка TYPOS должна начинаться с typos://"))
   let u: URL
   try {
     u = new URL(raw.replace(/^typos:\/\//i, "http://"))
   } catch {
-    throw new Error("Ссылка повреждена. Скопируй её целиком.")
+    throw new Error(translate("Ссылка повреждена. Скопируй её целиком."))
   }
   const token = u.searchParams.get("k")
-  if (!u.host || !token) throw new Error("В ссылке нет адреса или ключа. Скопируй её целиком.")
+  if (!u.host || !token) throw new Error(translate("В ссылке нет адреса или ключа. Скопируй её целиком."))
   const scheme = u.searchParams.get("tls") === "1" ? "https" : "http"
   return {
     url: `${scheme}://${u.host}${u.pathname.replace(/\/+$/, "")}`,

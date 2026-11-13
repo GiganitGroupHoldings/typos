@@ -1,4 +1,5 @@
 import { toast } from "sonner"
+import { translate } from "@/app/i18n"
 import { downloadBlob } from "@/lib/download"
 import { errorText } from "@/lib/errors"
 import { basename } from "@/storage/VaultAdapter"
@@ -31,7 +32,7 @@ const MIME: Record<string, string> = {
 
 export async function readProjectBlob(path: string, ext: string): Promise<Blob> {
   const blob = await useVault.getState().adapter?.readBlob(path)
-  if (!blob) throw new Error("Файл не найден.")
+  if (!blob) throw new Error(translate("Файл не найден."))
   return blob.slice(0, blob.size, MIME[ext] ?? (blob.type || "application/octet-stream"))
 }
 
@@ -39,6 +40,6 @@ export async function downloadProjectFile(tool: Tool) {
   try {
     downloadBlob(await readProjectBlob(tool.path, tool.ext), basename(tool.path))
   } catch (err) {
-    toast.error("Не удалось скачать", { description: errorText(err) })
+    toast.error(translate("Не удалось скачать"), { description: errorText(err) })
   }
 }

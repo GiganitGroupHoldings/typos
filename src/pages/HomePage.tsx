@@ -2,6 +2,7 @@ import { FolderPlus } from "lucide-react"
 import { motion } from "motion/react"
 import { type ReactNode } from "react"
 import { Link } from "react-router"
+import { translate, useLanguage } from "@/app/i18n"
 import { LiquidButton } from "@/components/ui/LiquidButton"
 import { LensBox, useLiquidLens } from "@/components/ui/LiquidLens"
 import { CARD_LENS } from "@/components/ui/liquidLensOptions"
@@ -32,6 +33,7 @@ function SubjectCard({ subject: s, children }: { subject: Subject; children: Rea
 }
 
 export function HomePage() {
+  useLanguage()
   const subjects = useSubjects()
   const recent = useRecentNotes(5)
   const notes = useVault((s) => s.notes)
@@ -42,14 +44,14 @@ export function HomePage() {
       {...pageEnter}
       className="mx-auto w-full max-w-5xl py-8 pr-[max(1rem,var(--safe-right))] pl-[max(1rem,var(--safe-left))] md:px-10 md:py-10"
     >
-      <h1 className="text-[28px] leading-tight font-bold tracking-tight md:text-[32px]">Предметы</h1>
+      <h1 className="text-[28px] leading-tight font-bold tracking-tight md:text-[32px]">{translate("Предметы")}</h1>
       <p className="mt-1 text-[15px] text-muted-foreground">{plural(subjects.length, ["предмет", "предмета", "предметов"])}</p>
 
       {!subjects.length && (
         <div className="mt-8 rounded-3xl border border-dashed px-6 py-14 text-center">
-          <p className="text-[17px] font-semibold">Нет предметов</p>
+          <p className="text-[17px] font-semibold">{translate("Нет предметов")}</p>
           <LiquidButton size="xl" className="mt-6 rounded-full font-semibold" onClick={openNewSubject}>
-            <FolderPlus /> Новый предмет
+            <FolderPlus /> {translate("Новый предмет")}
           </LiquidButton>
         </div>
       )}
@@ -77,7 +79,7 @@ export function HomePage() {
         ))}
       </motion.ul>
 
-      {!!recent.length && <h2 className="mt-12 mb-3 text-[20px] font-semibold tracking-tight">Недавние</h2>}
+      {!!recent.length && <h2 className="mt-12 mb-3 text-[20px] font-semibold tracking-tight">{translate("Недавние")}</h2>}
       {!!recent.length && (
         <LensBox lens={CARD_LENS} className="rounded-[var(--radius-surface)]">
           <motion.ul
@@ -97,7 +99,7 @@ export function HomePage() {
                   >
                     <SubjectBadge subject={s} size="sm" />
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-[15px] font-medium">{n.title || "Без названия"}</div>
+                      <div className="truncate text-[15px] font-medium">{n.title || translate("Без названия")}</div>
                       <div className="truncate text-[13px] text-muted-foreground">{n.excerpt}</div>
                     </div>
                     <span className="shrink-0 text-[13px] text-muted-foreground tabular-nums">{relativeTime(n.updated)}</span>

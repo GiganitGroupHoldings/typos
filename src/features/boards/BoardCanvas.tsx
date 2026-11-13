@@ -16,6 +16,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react"
 import { toast } from "sonner"
+import { translate, useLanguage } from "@/app/i18n"
 import { clamp, contains, curve, facingSides, rectOf, sidePoint, type Rect, type Side } from "@/editor/map/geometry"
 import { errorText } from "@/lib/errors"
 import { spring } from "@/lib/motion"
@@ -67,7 +68,7 @@ const IMAGE = /\.(png|jpe?g|gif|webp|avif|svg|bmp)$/i
 const NEW: Record<"sticky" | "text" | "frame", Omit<BoardNode, "id" | "x" | "y">> = {
   sticky: { type: "text", width: 200, height: 200, color: "3", text: "" },
   text: { type: "text", width: 260, height: 80, text: "" },
-  frame: { type: "group", width: 560, height: 380, label: "Рамка" },
+  frame: { type: "group", width: 560, height: 380 },
 }
 
 const rect = (n: BoardNode): Rect => ({ x: n.x, y: n.y, w: n.width, h: n.height })
@@ -139,6 +140,7 @@ function cloneItems(nodes: BoardNode[], edges: BoardEdge[], dx: number, dy: numb
 }
 
 export function BoardCanvas({ board }: { board: Board }) {
+  useLanguage()
   const root = useRef<HTMLDivElement>(null)
   const fileInput = useRef<HTMLInputElement>(null)
   const imageLink = useRef<string | undefined>(undefined)
@@ -189,7 +191,7 @@ export function BoardCanvas({ board }: { board: Board }) {
           dataRef.current = merged
           setDataState({ data: merged })
         },
-        (e) => toast.error("Не удалось сохранить доску", { id: "board-save", description: errorText(e) }),
+        (e) => toast.error(translate("Не удалось сохранить доску"), { id: "board-save", description: errorText(e) }),
       )
   }, [boardId])
 
@@ -326,6 +328,7 @@ export function BoardCanvas({ board }: { board: Board }) {
     const height = size?.height ?? base.height
     const n: BoardNode = {
       ...base,
+      label: kind === "frame" ? translate("Рамка") : base.label,
       id: boardItemId(),
       width,
       height,
@@ -422,14 +425,14 @@ export function BoardCanvas({ board }: { board: Board }) {
       }
       addNodes(nodes)
     } catch (e) {
-      toast.error("Не удалось добавить картинку", { description: errorText(e) })
+      toast.error(translate("Не удалось добавить картинку"), { description: errorText(e) })
     }
     return true
   }
 
   const saveLinkImage = async (file: File) => {
     const ext = file.name.match(IMAGE)?.[1].toLowerCase()
-    if (!ext && !file.type.startsWith("image/")) throw new Error("Выбери файл изображения.")
+    if (!ext && !file.type.startsWith("image/")) throw new Error(translate("Выбери файл изображения."))
     const type = ext === "jpg" ? "jpeg" : ext === "svg" ? "svg+xml" : ext
     return useVault.getState().saveBoardImage(boardId, type ? file.slice(0, file.size, `image/${type}`) : file)
   }
@@ -439,7 +442,7 @@ export function BoardCanvas({ board }: { board: Board }) {
       const path = await saveLinkImage(file)
       if (node(id)?.type === "link") updateNode(id, { file: path })
     } catch (e) {
-      toast.error("Не удалось добавить картинку", { description: errorText(e) })
+      toast.error(translate("Не удалось добавить картинку"), { description: errorText(e) })
     }
   }
 
@@ -853,7 +856,7 @@ export function BoardCanvas({ board }: { board: Board }) {
       data-board-canvas=""
       tabIndex={0}
       role="application"
-      aria-label={`Доска «${board.name}»`}
+      aria-label={translate("Доска «{0}»", board.name)}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -1027,7 +1030,7 @@ export function BoardCanvas({ board }: { board: Board }) {
       {!data.nodes.length && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6 text-center">
           <div className="max-w-sm text-[14px] text-muted-foreground">
-            <p className="text-[17px] font-semibold text-foreground">Пустая доска</p>
+            <p className="text-[17px] font-semibold text-foreground">{translate("Пустая доска")}</p>
           </div>
         </div>
       )}
@@ -1184,7 +1187,7 @@ const NodeView = memo(function NodeView({
                     className="truncate rounded-md px-1 font-semibold text-muted-foreground"
                     style={{ fontSize: centeredTitle ? "calc(12px * max(1, var(--inv) * 0.65))" : "calc(16px * max(1, var(--inv) * 0.6))" }}
                   >
-                    {n.label || "Рамка"}
+                    {n.label || translate("Рамка")}
                   </div>
                 )}
               </div>
@@ -1220,7 +1223,7 @@ const NodeView = memo(function NodeView({
                 transition={morph ? MORPH : INSTANT}
                 data-handle={side}
                 role="button"
-                aria-label="Протянуть стрелку"
+                aria-label={translate("Протянуть стрелку")}
                 className={cn(
                   "pointer-events-auto absolute size-[calc(12px*var(--inv))] -translate-x-1/2 -translate-y-1/2 cursor-crosshair rounded-full border-[calc(2px*var(--inv))] border-background bg-highlight shadow-card after:absolute after:-inset-3 after:content-['']",
                   !group && HANDLE_POS[side],
@@ -1237,7 +1240,7 @@ const NodeView = memo(function NodeView({
           transition={morph ? MORPH : INSTANT}
           data-resize=""
           role="button"
-          aria-label="Изменить размер"
+          aria-label={translate("Изменить размер")}
           className="pointer-events-auto absolute size-[calc(12px*var(--inv))] -translate-x-1/2 -translate-y-1/2 cursor-nwse-resize rounded-[calc(3px*var(--inv))] border-[calc(2px*var(--inv))] border-background bg-highlight after:absolute after:-inset-3 after:content-['']"
         />
       )}
@@ -1246,17 +1249,19 @@ const NodeView = memo(function NodeView({
 })
 
 function FileNode({ path }: { path?: string }) {
+  useLanguage()
   const url = useVaultImage(path)
   if (url) return <img src={url} alt="" draggable={false} className="pointer-events-none size-full object-cover" />
   return (
     <div className="flex size-full items-center justify-center gap-2 p-3 text-[14px] text-muted-foreground">
       <FileText className="size-4 shrink-0" />
-      <span className="truncate">{path ? basename(path) : "Файл"}</span>
+      <span className="truncate">{path ? basename(path) : translate("Файл")}</span>
     </div>
   )
 }
 
 function FrameOverview({ node: n, morph }: { node: BoardNode; morph: boolean }) {
+  useLanguage()
   const width = nodeAnchor(n, "right").x - nodeAnchor(n, "left").x
   const height = nodeAnchor(n, "bottom").y - nodeAnchor(n, "top").y
   return (
@@ -1280,7 +1285,7 @@ function FrameOverview({ node: n, morph }: { node: BoardNode; morph: boolean }) 
           fontSize: `min(${Math.min(width, height) / 4}px, calc(14px * var(--inv)))`,
         }}
       >
-        {n.label || "Рамка"}
+        {n.label || translate("Рамка")}
       </span>
     </div>
   )
@@ -1305,7 +1310,8 @@ function FrameSurface({ node, selected, morph }: { node: BoardNode; selected: bo
 }
 
 function LinkNode({ node }: { node: BoardNode }) {
-  const label = node.label || node.url || "Ссылка"
+  useLanguage()
+  const label = node.label || node.url || translate("Ссылка")
   const image = useVaultImage(node.file)
   return (
     <div className="flex size-full flex-col items-center justify-center gap-1.5">
@@ -1360,6 +1366,7 @@ function TextEditor({
   select?: boolean
   onFinish: (v: string, h?: number) => void
 }) {
+  useLanguage()
   const ref = useRef<HTMLTextAreaElement>(null)
   const done = useRef(false)
   useLayoutEffect(() => {
@@ -1380,7 +1387,7 @@ function TextEditor({
       ref={ref}
       data-editor=""
       defaultValue={value}
-      aria-label="Текст карточки"
+      aria-label={translate("Текст карточки")}
       onBlur={finish}
       onKeyDown={(e) => {
         e.stopPropagation()
@@ -1398,6 +1405,7 @@ function TextEditor({
 }
 
 function InlineEditor({ value, className, onFinish }: { value: string; className?: string; onFinish: (v: string) => void }) {
+  useLanguage()
   const done = useRef(false)
   const finish = (v: string) => {
     if (done.current) return
@@ -1409,7 +1417,7 @@ function InlineEditor({ value, className, onFinish }: { value: string; className
       data-editor=""
       autoFocus
       defaultValue={value}
-      aria-label="Подпись"
+      aria-label={translate("Подпись")}
       onFocus={(e) => e.currentTarget.select()}
       onBlur={(e) => finish(e.currentTarget.value)}
       onKeyDown={(e) => {

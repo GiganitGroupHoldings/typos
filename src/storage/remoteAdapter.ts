@@ -1,4 +1,5 @@
 import { del, get, set } from "idb-keyval"
+import { translate } from "@/app/i18n"
 import { blockedAsMixedContent, MIXED_CONTENT_HINT, type RemoteConfig } from "./remoteLink"
 import { settingsStore } from "./settings"
 
@@ -41,9 +42,9 @@ export class RemoteAdapter {
   private unreachable() {
     const { url } = this.config
     const host = new URL(url).host
-    if (blockedAsMixedContent(this.config)) return MIXED_CONTENT_HINT
-    if (url.startsWith("https:")) return `Сервер ${host} не отвечает. Проверь сертификат в браузере: ${url}.`
-    return `Сервер ${host} не отвечает. Проверь подключение.`
+    if (blockedAsMixedContent(this.config)) return translate(MIXED_CONTENT_HINT)
+    if (url.startsWith("https:")) return translate("Сервер {0} не отвечает. Проверь сертификат в браузере: {1}.", host, url)
+    return translate("Сервер {0} не отвечает. Проверь подключение.", host)
   }
 
   protected async request(url: string, init: RequestInit & { headers?: Record<string, string> } = {}, ok: number[] = []) {
@@ -56,11 +57,11 @@ export class RemoteAdapter {
     }
     if (res.status === 401) {
       this.onProblem?.("unauthorized")
-      throw new RemoteError("Ключ недействителен. Получи новую ссылку командой link.", 401)
+      throw new RemoteError(translate("Ключ недействителен. Получи новую ссылку командой link."), 401)
     }
     if (!res.ok && !ok.includes(res.status)) {
       const text = await res.text().catch(() => "")
-      throw new RemoteError(`Сервер ответил ${res.status}${text ? `: ${text.slice(0, 200)}` : ""}`, res.status)
+      throw new RemoteError(translate("Сервер ответил {0}{1}", res.status, text ? `: ${text.slice(0, 200)}` : ""), res.status)
     }
     return res
   }
@@ -69,7 +70,8 @@ export class RemoteAdapter {
     const res = await this.request(`${this.config.url}/.typos/info`, {}, [404])
     const info = res.status === 404 ? null : ((await res.json().catch(() => null)) as RemoteInfo | null)
 
-    if (!info?.protocol?.startsWith("typos-storage/")) throw new RemoteError("По этому адресу нет сервера хранения TYPOS", res.status)
+    if (!info?.protocol?.startsWith("typos-storage/"))
+      throw new RemoteError(translate("По этому адресу нет сервера хранения TYPOS"), res.status)
     return info
   }
 
@@ -80,7 +82,7 @@ export class RemoteAdapter {
       headers: { Authorization: `Bearer ${this.config.token}` },
     })
     if (res.status === 401) return "revoked"
-    if (!res.ok || !res.body) throw new RemoteError(`Сервер ответил ${res.status}`, res.status)
+    if (!res.ok || !res.body) throw new RemoteError(translate("Сервер ответил {0}", res.status), res.status)
     const reader = res.body.getReader()
     const decoder = new TextDecoder()
     let buffer = ""
@@ -121,7 +123,7 @@ export class RemoteAdapter {
     // Прокси может удалить или ослабить HTTP ETag при сжатии ответа.
     const etag = res.headers.get("X-Typos-ETag") ?? res.headers.get("ETag")
     if (!etag || !/^"[\x21\x23-\x7e]+"$/.test(etag))
-      throw new RemoteError("Сервер не передал версию файла. Обнови сервер хранения и проверь настройки прокси.", 502)
+      throw new RemoteError(translate("Сервер не передал версию файла. Обнови сервер хранения и проверь настройки прокси."), 502)
     return etag
   }
 
@@ -156,7 +158,8 @@ export class RemoteAdapter {
 
 export async function checkRemote(config: RemoteConfig): Promise<RemoteInfo> {
   const info = await new RemoteAdapter(config).info()
-  if (config.vaultId && info.vaultId !== config.vaultId) throw new Error("Ссылка от другого хранилища. Получи новую командой link.")
+  if (config.vaultId && info.vaultId !== config.vaultId)
+    throw new Error(translate("Ссылка от другого хранилища. Получи новую командой link."))
   return info
 }
 

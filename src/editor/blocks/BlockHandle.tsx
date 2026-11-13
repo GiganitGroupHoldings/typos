@@ -3,6 +3,7 @@ import { NodeSelection, TextSelection } from "@tiptap/pm/state"
 import type { Editor } from "@tiptap/react"
 import { GripVertical, Plus } from "lucide-react"
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
+import { translate, useLanguage } from "@/app/i18n"
 import { foldingKey } from "./folding"
 import { blockPos, foldedBlocks, moveTarget, sectionRange } from "./sections"
 
@@ -56,6 +57,7 @@ function itemAt(editor: Editor, el: HTMLElement) {
 }
 
 export function BlockHandle({ editor, disabled }: { editor: Editor; disabled?: boolean }) {
+  useLanguage()
   const self = useRef<HTMLDivElement>(null)
   const [hover, setHover] = useState<{ target: Target; top: number; left: number } | null>(null)
   const [line, setLine] = useState<{ y: number; left: number; width: number } | null>(null)
@@ -336,8 +338,8 @@ export function BlockHandle({ editor, disabled }: { editor: Editor; disabled?: b
         <div style={{ top: hover.top, left: hover.left }} className="pointer-events-auto absolute flex items-center gap-0.5 select-none">
           <button
             type="button"
-            aria-label="Новая строка ниже"
-            title="Новая строка ниже"
+            aria-label={translate("Новая строка ниже")}
+            title={translate("Новая строка ниже")}
             onMouseDown={(e) => e.preventDefault()}
             onClick={onPlus}
             className={btn}
@@ -346,8 +348,8 @@ export function BlockHandle({ editor, disabled }: { editor: Editor; disabled?: b
           </button>
           <button
             type="button"
-            aria-label="Перетащить блок"
-            title="Перетащить блок"
+            aria-label={translate("Перетащить блок")}
+            title={translate("Перетащить блок")}
             onPointerDown={onGripDown}
             onPointerMove={onGripMove}
             onPointerUp={finish}

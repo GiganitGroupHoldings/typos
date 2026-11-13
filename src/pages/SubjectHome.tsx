@@ -2,6 +2,7 @@ import { FileDown, FileUp, FolderOpen, GraduationCap, LayoutDashboard, Pin, Plus
 import { motion } from "motion/react"
 import type { ReactNode } from "react"
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from "react-router"
+import { translate, useLanguage } from "@/app/i18n"
 import { useUi } from "@/app/store"
 import { Button } from "@/components/ui/Button"
 import { useLiquidLens } from "@/components/ui/LiquidLens"
@@ -24,6 +25,7 @@ import { useBoardsOf, useCreateBoard, useCreateNote, useNotesOf, usePinsOf, useS
 const PINS_PREVIEW = 4
 
 export function SubjectHome() {
+  useLanguage()
   const { subjectId } = useParams()
   const [params] = useSearchParams()
   const subject = useSubject(subjectId)
@@ -65,11 +67,11 @@ export function SubjectHome() {
         <Tile
           className="lg:col-span-2 lg:row-span-2"
           highlight={tab === "notes"}
-          title="Конспекты"
+          title={translate("Конспекты")}
           icon={<SquarePen />}
           actions={[
-            { label: "Импорт", icon: <FileDown />, onClick: () => void pickAndImportNotes(subject.id, navigate) },
-            { label: "Новый", icon: <Plus />, onClick: () => createNote(subject.id) },
+            { label: translate("Импорт"), icon: <FileDown />, onClick: () => void pickAndImportNotes(subject.id, navigate) },
+            { label: translate("Новый"), icon: <Plus />, onClick: () => createNote(subject.id) },
           ]}
         >
           {notes.length ? (
@@ -82,8 +84,8 @@ export function SubjectHome() {
                     className="group flex min-w-0 flex-1 items-start gap-3 rounded-xl px-2 py-2.5 outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-[15px] font-semibold">{n.title || "Без названия"}</div>
-                      <div className="line-clamp-2 text-[13px] text-muted-foreground">{n.excerpt || "Нет текста"}</div>
+                      <div className="truncate text-[15px] font-semibold">{n.title || translate("Без названия")}</div>
+                      <div className="line-clamp-2 text-[13px] text-muted-foreground">{n.excerpt || translate("Нет текста")}</div>
                     </div>
                     <span className="shrink-0 pt-0.5 text-[12px] text-muted-foreground tabular-nums">{relativeTime(n.updated)}</span>
                   </Link>
@@ -92,15 +94,15 @@ export function SubjectHome() {
               ))}
             </ul>
           ) : (
-            <Empty text="Нет конспектов" />
+            <Empty text={translate("Нет конспектов")} />
           )}
         </Tile>
 
         <Tile
           highlight={tab === "pins"}
-          title="Закреп"
+          title={translate("Закреп")}
           icon={<Pin />}
-          actions={[{ label: "Закреп", icon: <Plus />, onClick: () => openPinEditor({ subjectId: subject.id }) }]}
+          actions={[{ label: translate("Закреп"), icon: <Plus />, onClick: () => openPinEditor({ subjectId: subject.id }) }]}
         >
           {pins.length ? (
             <>
@@ -126,44 +128,44 @@ export function SubjectHome() {
               <div className="mt-3 flex flex-wrap gap-2">
                 {pins.length > PINS_PREVIEW && (
                   <Button size="sm" variant="ghost" onClick={() => setPinsOpen(true)}>
-                    Ещё {pins.length - PINS_PREVIEW}
+                    {translate("Ещё")} {pins.length - PINS_PREVIEW}
                   </Button>
                 )}
                 {pins.some(isQuizPin) && (
                   <Button size="sm" variant="outline" asChild>
                     <Link to={`/s/${subject.id}/review`} viewTransition>
-                      <GraduationCap /> Повторение
+                      <GraduationCap /> {translate("Повторение")}
                     </Link>
                   </Button>
                 )}
               </div>
             </>
           ) : (
-            <Empty text="Нет закрепов" />
+            <Empty text={translate("Нет закрепов")} />
           )}
         </Tile>
 
         <Tile
           highlight={tab === "tools" || drop.over}
-          title="Проекты"
+          title={translate("Проекты")}
           icon={<FolderOpen />}
-          actions={[{ label: "Добавить", icon: <FileUp />, onClick: () => openToolDialog({ subjectId: subject.id }) }]}
+          actions={[{ label: translate("Добавить"), icon: <FileUp />, onClick: () => openToolDialog({ subjectId: subject.id }) }]}
         >
           {tools.length ? (
             <div className="flex flex-col items-start gap-3">
               <ToolDock tools={tools} />
             </div>
           ) : (
-            <Empty text={drop.over ? "Импорт файлов" : "Нет проектов"} />
+            <Empty text={drop.over ? translate("Импорт файлов") : translate("Нет проектов")} />
           )}
         </Tile>
 
         <Tile
           className="lg:col-span-3"
           highlight={tab === "boards"}
-          title="Доски"
+          title={translate("Доски")}
           icon={<LayoutDashboard />}
-          actions={[{ label: "Новая", icon: <Plus />, onClick: () => void createBoard(subject.id) }]}
+          actions={[{ label: translate("Новая"), icon: <Plus />, onClick: () => void createBoard(subject.id) }]}
         >
           {boards.length ? (
             <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
@@ -177,14 +179,14 @@ export function SubjectHome() {
                     <BoardPreview data={b.data} className="aspect-[16/10] w-full rounded-lg bg-muted/40" />
                     <div className="mt-2 truncate px-1 text-[14px] font-semibold">{b.name}</div>
                     <div className="px-1 text-[12px] text-muted-foreground">
-                      {b.data.nodes.length ? plural(b.data.nodes.length, ["элемент", "элемента", "элементов"]) : "Пустая"}
+                      {b.data.nodes.length ? plural(b.data.nodes.length, ["элемент", "элемента", "элементов"]) : translate("Пустая")}
                     </div>
                   </Link>
                 </li>
               ))}
             </ul>
           ) : (
-            <Empty text="Нет досок" />
+            <Empty text={translate("Нет досок")} />
           )}
         </Tile>
       </motion.div>

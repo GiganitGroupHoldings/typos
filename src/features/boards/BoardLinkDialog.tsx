@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { translate, useLanguage } from "@/app/i18n"
 import { Button } from "@/components/ui/Button"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/Dialog"
 import { Input } from "@/components/ui/Input"
@@ -13,6 +14,7 @@ export function BoardLinkDialog({
   onClose: () => void
   onSave: (url: string, label: string) => void
 }) {
+  useLanguage()
   const [error, setError] = useState(false)
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
@@ -23,7 +25,7 @@ export function BoardLinkDialog({
         onKeyDown={(e) => e.stopPropagation()}
         onCloseAutoFocus={(e) => e.preventDefault()}
       >
-        <DialogTitle>{node ? "Редактировать ссылку" : "Добавить ссылку"}</DialogTitle>
+        <DialogTitle>{node ? translate("Редактировать ссылку") : translate("Добавить ссылку")}</DialogTitle>
         <form
           className="grid gap-3"
           onSubmit={(e) => {
@@ -38,13 +40,13 @@ export function BoardLinkDialog({
             URL
             <Input name="url" placeholder="https://…" inputMode="url" defaultValue={node?.url} aria-invalid={error} />
           </label>
-          {error && <p role="alert">Введи адрес, который начинается с http:// или https://.</p>}
+          {error && <p role="alert">{translate("Введи адрес, который начинается с http:// или https://.")}</p>}
           <label className="grid gap-1">
-            Подпись
+            {translate("Подпись")}
             <Input name="label" defaultValue={node?.label} />
           </label>
           <Button type="submit" className="justify-self-end">
-            {node ? "Сохранить" : "Добавить"}
+            {node ? translate("Сохранить") : translate("Добавить")}
           </Button>
         </form>
       </DialogContent>

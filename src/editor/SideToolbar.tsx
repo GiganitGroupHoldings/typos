@@ -16,6 +16,7 @@ import {
 } from "lucide-react"
 import { motion, useMotionValue, useSpring, useTransform, type MotionValue } from "motion/react"
 import { useRef } from "react"
+import { translate, useLanguage } from "@/app/i18n"
 import { useUi } from "@/app/store"
 import { Kbd } from "@/components/ui/Kbd"
 import { useLiquidLens } from "@/components/ui/LiquidLens"
@@ -84,6 +85,7 @@ export function SideToolbar({
   onBlockFormula: () => void
   onImage: () => void
 }) {
+  useLanguage()
   const pinsOpen = useUi((s) => s.pinsOpen)
   const mapMode = useUi((s) => s.mapMode)
   const setMapMode = useUi((s) => s.setMapMode)
@@ -110,31 +112,37 @@ export function SideToolbar({
 
   const groups: Item[][] = [
     [
-      { icon: Bold, label: "Жирный", key: "Ctrl B", active: s.bold, run: () => c().toggleBold().run() },
-      { icon: Italic, label: "Курсив", key: "Ctrl I", active: s.italic, run: () => c().toggleItalic().run() },
-      { icon: Heading2, label: "Подзаголовок", key: "## ", active: s.h2, run: () => c().toggleHeading({ level: 2 }).run() },
+      { icon: Bold, label: translate("Жирный"), key: "Ctrl B", active: s.bold, run: () => c().toggleBold().run() },
+      { icon: Italic, label: translate("Курсив"), key: "Ctrl I", active: s.italic, run: () => c().toggleItalic().run() },
+      { icon: Heading2, label: translate("Подзаголовок"), key: "## ", active: s.h2, run: () => c().toggleHeading({ level: 2 }).run() },
     ],
     [
-      { icon: List, label: "Список", key: "- ", active: s.bullet, run: () => c().toggleBulletList().run() },
-      { icon: ListOrdered, label: "Нумерованный список", key: "1. ", active: s.ordered, run: () => c().toggleOrderedList().run() },
-      { icon: ListChecks, label: "Чек-лист", key: "[ ] ", active: s.task, run: () => c().toggleTaskList().run() },
-      { icon: Quote, label: "Цитата", key: "> ", active: s.quote, run: () => c().toggleBlockquote().run() },
+      { icon: List, label: translate("Список"), key: "- ", active: s.bullet, run: () => c().toggleBulletList().run() },
+      {
+        icon: ListOrdered,
+        label: translate("Нумерованный список"),
+        key: "1. ",
+        active: s.ordered,
+        run: () => c().toggleOrderedList().run(),
+      },
+      { icon: ListChecks, label: translate("Чек-лист"), key: "[ ] ", active: s.task, run: () => c().toggleTaskList().run() },
+      { icon: Quote, label: translate("Цитата"), key: "> ", active: s.quote, run: () => c().toggleBlockquote().run() },
       {
         icon: Table,
-        label: "Таблица",
+        label: translate("Таблица"),
         active: s.table,
         run: () => !s.table && c().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
       },
     ],
     [
-      { icon: Radical, label: "Формула в строке", key: "$x$", run: onFormula },
-      { icon: SquareFunction, label: "Блочная формула", key: "$$ ", run: onBlockFormula },
-      { icon: ImagePlus, label: "Картинка", key: "Ctrl V", run: onImage },
+      { icon: Radical, label: translate("Формула в строке"), key: "$x$", run: onFormula },
+      { icon: SquareFunction, label: translate("Блочная формула"), key: "$$ ", run: onBlockFormula },
+      { icon: ImagePlus, label: translate("Картинка"), key: "Ctrl V", run: onImage },
     ],
     [
       {
         icon: Workflow,
-        label: mapMode ? "Выйти из карты" : "Карта",
+        label: mapMode ? translate("Выйти из карты") : translate("Карта"),
         key: mapMode ? "Esc" : undefined,
         active: mapMode,
         run: () => {
@@ -148,7 +156,7 @@ export function SideToolbar({
   return (
     <motion.div
       role="toolbar"
-      aria-label="Форматирование"
+      aria-label={translate("Форматирование")}
       aria-orientation="vertical"
       aria-hidden={hidden}
       initial={false}

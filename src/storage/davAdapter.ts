@@ -1,3 +1,4 @@
+import { translate } from "@/app/i18n"
 import { RemoteAdapter, RemoteError } from "./remoteAdapter"
 import type { Entry, VaultAdapter } from "./VaultAdapter"
 
@@ -71,6 +72,6 @@ export class DavAdapter extends RemoteAdapter implements VaultAdapter {
       { method: "MOVE", headers: { Destination: this.fileUrl(to), Overwrite: "F" } },
       [412],
     )
-    if (res.status === 412) throw new RemoteError(`Уже существует: ${to}`, 412)
+    if (res.status === 412) throw new RemoteError(translate("Уже существует: {0}", to), 412)
   }
 }

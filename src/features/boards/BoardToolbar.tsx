@@ -23,6 +23,7 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import type { ReactNode } from "react"
+import { translate, useLanguage } from "@/app/i18n"
 import { Kbd } from "@/components/ui/Kbd"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/Tooltip"
 import { cn } from "@/lib/utils"
@@ -116,30 +117,31 @@ export function BoardToolbar({
   onUndo: () => void
   onRedo: () => void
 }) {
+  useLanguage()
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-[calc(0.75rem+var(--safe-bottom))] z-10 flex justify-center px-2 md:bottom-4 md:px-4">
       <div className="pointer-events-auto max-w-full">
         <Glass>
           {TOOLS.map((t) => (
-            <IconButton key={t.id} label={t.label} hint={t.key} active={tool === t.id} onClick={() => onTool(t.id)}>
+            <IconButton key={t.id} label={translate(t.label)} hint={translate(t.key)} active={tool === t.id} onClick={() => onTool(t.id)}>
               <t.icon />
             </IconButton>
           ))}
-          <IconButton label="Картинка" onClick={onImage}>
+          <IconButton label={translate("Картинка")} onClick={onImage}>
             <ImagePlus />
           </IconButton>
-          <IconButton label="Добавить ссылку" onClick={onLink}>
+          <IconButton label={translate("Добавить ссылку")} onClick={onLink}>
             <Link2 />
           </IconButton>
           <Divider />
-          <IconButton label="Отменить" hint="Ctrl Z" onClick={onUndo}>
+          <IconButton label={translate("Отменить")} hint="Ctrl Z" onClick={onUndo}>
             <Undo2 />
           </IconButton>
-          <IconButton label="Вернуть" hint="Ctrl Shift Z" onClick={onRedo}>
+          <IconButton label={translate("Повторить действие")} hint="Ctrl Shift Z" onClick={onRedo}>
             <Redo2 />
           </IconButton>
           <Divider />
-          <IconButton label="Уменьшить масштаб" hint="Ctrl и колесо" onClick={() => onZoom(1 / 1.25)}>
+          <IconButton label={translate("Уменьшить масштаб")} hint={translate("Ctrl и колесо")} onClick={() => onZoom(1 / 1.25)}>
             <ZoomOut />
           </IconButton>
           <Tooltip>
@@ -153,13 +155,13 @@ export function BoardToolbar({
               </button>
             </TooltipTrigger>
             <TooltipContent className="flex items-center gap-2">
-              Масштаб 100% <Kbd>Shift 0</Kbd>
+              {translate("Масштаб 100%")} <Kbd>Shift 0</Kbd>
             </TooltipContent>
           </Tooltip>
-          <IconButton label="Увеличить масштаб" hint="Ctrl и колесо" onClick={() => onZoom(1.25)}>
+          <IconButton label={translate("Увеличить масштаб")} hint={translate("Ctrl и колесо")} onClick={() => onZoom(1.25)}>
             <ZoomIn />
           </IconButton>
-          <IconButton label="Показать всё" hint="Shift 1" onClick={onFit}>
+          <IconButton label={translate("Показать всё")} hint="Shift 1" onClick={onFit}>
             <Scan />
           </IconButton>
         </Glass>
@@ -194,6 +196,7 @@ export function SelectionBar({
   onEditLink?: () => void
   onDelete: () => void
 }) {
+  useLanguage()
   const ends = edge ? `${edge.fromEnd === "arrow" ? "both" : edge.toEnd === "none" ? "none" : "end"}` : null
   return (
     <div className="pointer-events-none absolute inset-x-0 top-[calc(0.75rem+var(--safe-top))] z-10 flex justify-center px-2 md:top-3 md:px-4">
@@ -201,7 +204,7 @@ export function SelectionBar({
         <Glass>
           <button
             type="button"
-            aria-label="Без цвета"
+            aria-label={translate("Без цвета")}
             aria-pressed={!color}
             onClick={() => onColor(undefined)}
             className="flex size-8 items-center justify-center rounded-full outline-none hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring max-md:size-10"
@@ -218,7 +221,7 @@ export function SelectionBar({
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  aria-label={BOARD_COLOR_LABELS[c]}
+                  aria-label={translate(BOARD_COLOR_LABELS[c])}
                   aria-pressed={color === c}
                   onClick={() => onColor(c)}
                   className="flex size-8 items-center justify-center rounded-full outline-none hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring max-md:size-10"
@@ -229,37 +232,37 @@ export function SelectionBar({
                   />
                 </button>
               </TooltipTrigger>
-              <TooltipContent>{BOARD_COLOR_LABELS[c]}</TooltipContent>
+              <TooltipContent>{translate(BOARD_COLOR_LABELS[c])}</TooltipContent>
             </Tooltip>
           ))}
           <Divider />
           {frameShape &&
             FRAME_SHAPES.map((s) => (
-              <IconButton key={s.id} label={s.label} active={frameShape === s.id} onClick={() => onFrameShape(s.id)}>
+              <IconButton key={s.id} label={translate(s.label)} active={frameShape === s.id} onClick={() => onFrameShape(s.id)}>
                 <s.icon />
               </IconButton>
             ))}
           {onEditLink && (
-            <IconButton label="Редактировать ссылку" hint="Enter" onClick={onEditLink}>
+            <IconButton label={translate("Редактировать ссылку")} hint="Enter" onClick={onEditLink}>
               <Link2 />
             </IconButton>
           )}
           {onArrows && (
-            <IconButton label="Концы стрелки" onClick={onArrows}>
+            <IconButton label={translate("Концы стрелки")} onClick={onArrows}>
               {ends === "both" ? <ArrowLeftRight /> : ends === "none" ? <Minus /> : <ArrowRight />}
             </IconButton>
           )}
           {onFront && (
-            <IconButton label="На передний план" onClick={onFront}>
+            <IconButton label={translate("На передний план")} onClick={onFront}>
               <BringToFront />
             </IconButton>
           )}
           {onDuplicate && (
-            <IconButton label="Дублировать" hint="Ctrl D" onClick={onDuplicate}>
+            <IconButton label={translate("Дублировать")} hint="Ctrl D" onClick={onDuplicate}>
               <Copy />
             </IconButton>
           )}
-          <IconButton label="Удалить" hint="Delete" onClick={onDelete}>
+          <IconButton label={translate("Удалить")} hint="Delete" onClick={onDelete}>
             <Trash2 />
           </IconButton>
         </Glass>

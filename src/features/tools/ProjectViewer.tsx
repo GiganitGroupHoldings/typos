@@ -1,46 +1,50 @@
-import { Download, Loader2 } from "lucide-react"
-import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { Download } from "lucide-react"
+import { lazy, Suspense, useEffect, useState, type ReactNode } from "react"
+import { translate, useLanguage } from "@/app/i18n"
 import { Button } from "@/components/ui/Button"
 import { kindLabels, toolIcon } from "@/features/subjects/visuals"
-import { errorText } from "@/lib/errors"
 import { fileSize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import type { Tool } from "@/types"
-import { downloadProjectFile, readProjectBlob } from "./projectFiles"
+import { OfficeView } from "./OfficeView"
+import { downloadProjectFile } from "./projectFiles"
+import { Spinner } from "./Spinner"
 import { ToolFrame } from "./ToolFrame"
+import { useProjectFile } from "./useProjectFile"
 
 const SpreadsheetView = lazy(() => import("./SpreadsheetView"))
 
-export function ProjectViewer({ tool, runKey = 0 }: { tool: Tool; runKey?: number }) {
-  if (tool.kind === "html") return <ToolFrame html={tool.html} title={tool.name} runKey={runKey} />
-
-  return <FileView key={`${tool.path}:${runKey}`} tool={tool} />
+interface Props {
+  tool: Tool
+  runKey?: number
+  present?: boolean
+  slide?: number
+  preview?: boolean
+  onSlides?: (pages: number) => void
+  onSlide?: (index: number) => void
 }
 
-type Loaded = { blob: Blob; url: string } | { error: string } | null
-
-function useProjectFile(path: string, ext: string): Loaded {
-  const [file, setFile] = useState<Loaded>(null)
-  useEffect(() => {
-    let alive = true
-    let url = ""
-    readProjectBlob(path, ext).then(
-      (blob) => {
-        if (!alive) return
-        url = URL.createObjectURL(blob)
-        setFile({ blob, url })
-      },
-      (err) => alive && setFile({ error: errorText(err) }),
+export function ProjectViewer({ tool, runKey = 0, present = false, slide = 0, preview = true, onSlides, onSlide }: Props) {
+  if (tool.kind === "html") {
+    return (
+      <ToolFrame
+        html={tool.html}
+        title={tool.name}
+        runKey={runKey}
+        present={present}
+        slide={slide}
+        preview={preview}
+        onSlides={onSlides}
+        onSlide={onSlide}
+      />
     )
-    return () => {
-      alive = false
-      if (url) URL.revokeObjectURL(url)
-    }
-  }, [path, ext])
-  return file
+  }
+
+  return <FileView key={`${tool.path}:${runKey}`} tool={tool} present={present} slide={slide} onSlides={onSlides} />
 }
 
-function FileView({ tool }: { tool: Tool }) {
+function FileView({ tool, present, slide, onSlides }: { tool: Tool; present: boolean; slide: number; onSlides?: (pages: number) => void }) {
+  useLanguage()
   const file = useProjectFile(tool.path, tool.ext)
   if (!file) return <Spinner />
   if ("error" in file) return <FileCard tool={tool} note={file.error} />
@@ -71,22 +75,14 @@ function FileView({ tool }: { tool: Tool }) {
       )
     case "docx":
     case "pptx":
-      return <OfficeView blob={file.blob} kind={tool.kind} title={tool.name} />
+      return <OfficeView blob={file.blob} kind={tool.kind} title={tool.name} present={present} slide={slide} onReady={onSlides} />
     default:
-      return <FileCard tool={tool} size={file.blob.size} note="Просмотр недоступен. Скачай файл." />
+      return <FileCard tool={tool} size={file.blob.size} note={translate("Просмотр недоступен. Скачай файл.")} />
   }
 }
 
-function Spinner({ text }: { text?: string }) {
-  return (
-    <div role="status" className="flex size-full flex-col items-center justify-center gap-2 text-[13px] text-muted-foreground">
-      <Loader2 className="size-5 animate-spin" />
-      {text ?? "Открываю…"}
-    </div>
-  )
-}
-
 function FileCard({ tool, size, note, children }: { tool: Tool; size?: number; note?: string; children?: ReactNode }) {
+  useLanguage()
   const Icon = toolIcon(tool)
   return (
     <div className="flex size-full flex-col items-center justify-center gap-3 p-6 text-center">
@@ -94,7 +90,7 @@ function FileCard({ tool, size, note, children }: { tool: Tool; size?: number; n
       <div>
         <div className="text-[17px] font-semibold">{tool.name}</div>
         <div className="flex justify-center gap-2 text-[13px] text-muted-foreground">
-          <span>{kindLabels[tool.kind]}</span>
+          <span>{translate(kindLabels[tool.kind])}</span>
           {tool.ext && <span>.{tool.ext}</span>}
           {size !== undefined && <span>{fileSize(size)}</span>}
         </div>
@@ -102,19 +98,20 @@ function FileCard({ tool, size, note, children }: { tool: Tool; size?: number; n
       {children}
       {note && <p className="max-w-sm text-[13px] text-muted-foreground">{note}</p>}
       <Button variant="outline" size="sm" onClick={() => void downloadProjectFile(tool)}>
-        <Download /> Скачать
+        <Download /> {translate("Скачать")}
       </Button>
     </div>
   )
 }
 
 function ImageView({ url, name }: { url: string; name: string }) {
+  useLanguage()
   const [actual, setActual] = useState(false)
   return (
     <div className={cn("size-full overflow-auto", !actual && "flex items-center justify-center p-4")}>
       <button
         type="button"
-        aria-label={actual ? "Вписать в окно" : "В исходном размере"}
+        aria-label={actual ? translate("Вписать в окно") : translate("В исходном размере")}
         onClick={() => setActual((v) => !v)}
         className={cn(
           "block outline-none focus-visible:ring-2 focus-visible:ring-ring",
@@ -130,6 +127,7 @@ function ImageView({ url, name }: { url: string; name: string }) {
 const TEXT_LIMIT = 2 * 1024 * 1024
 
 function TextView({ blob }: { blob: Blob }) {
+  useLanguage()
   const [text, setText] = useState<string | null>(null)
   useEffect(() => {
     let alive = true
@@ -145,90 +143,7 @@ function TextView({ blob }: { blob: Blob }) {
   return (
     <pre className="size-full overflow-auto p-5 font-mono text-[13px] leading-relaxed break-words whitespace-pre-wrap">
       {text}
-      {blob.size > TEXT_LIMIT && "\n\nПоказаны первые 2 МБ. Полный файл доступен для скачивания."}
+      {blob.size > TEXT_LIMIT && translate("\n\nПоказаны первые 2 МБ. Полный файл доступен для скачивания.")}
     </pre>
-  )
-}
-
-const OFFICE_CSS = `
-html,body{margin:0;min-height:100%;background:transparent;font-family:system-ui,sans-serif}
-#root{min-height:100vh}
-.docx-wrapper{background:transparent!important;padding:24px 16px!important}
-.docx-wrapper>section.docx{margin:0 auto 24px!important;border-radius:4px;box-shadow:0 1px 3px rgb(0 0 0/.14),0 10px 30px rgb(0 0 0/.1)!important}
-.pptx-preview-wrapper{background:transparent!important;padding:16px 0 6px}
-.pptx-preview-slide-wrapper{margin:0 auto 16px!important;border-radius:10px;box-shadow:0 1px 3px rgb(0 0 0/.14),0 10px 30px rgb(0 0 0/.1)}
-`
-
-function officeDoc() {
-  const src = `${location.origin}/viewers/office.js`
-  const csp = [
-    "default-src 'none'",
-    `script-src ${src}`,
-    "style-src 'unsafe-inline'",
-    "img-src data: blob:",
-    "font-src data: blob:",
-    "media-src data: blob:",
-    "base-uri 'none'",
-    "form-action 'none'",
-  ].join("; ")
-  return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${csp}"><meta name="color-scheme" content="light dark"><style>${OFFICE_CSS}</style></head><body><div id="root"></div><script src="${src}"></script></body></html>`
-}
-
-type OfficeMessage = { type: "boot" } | { type: "ready"; pages: number } | { type: "error"; message: string }
-
-function OfficeView({ blob, kind, title }: { blob: Blob; kind: "docx" | "pptx"; title: string }) {
-  const ref = useRef<HTMLIFrameElement>(null)
-  const [status, setStatus] = useState<"loading" | "ready" | { error: string }>("loading")
-  const srcDoc = useMemo(() => officeDoc(), [])
-
-  useEffect(() => {
-    let booted = false
-    let timer = 0
-    const onMessage = async (e: MessageEvent<OfficeMessage>) => {
-      const win = ref.current?.contentWindow
-      if (!win || e.source !== win) return
-      if (e.data?.type === "boot") {
-        booted = true
-        const data = await blob.arrayBuffer()
-        win.postMessage({ type: "render", kind, data }, "*", [data])
-      } else if (e.data?.type === "ready") setStatus("ready")
-      else if (e.data?.type === "error") setStatus({ error: String(e.data.message) })
-    }
-    const onLoad = () => {
-      timer = window.setTimeout(() => !booted && setStatus({ error: "Просмотрщик недоступен." }), 1500)
-    }
-    const frame = ref.current
-    addEventListener("message", onMessage)
-    frame?.addEventListener("load", onLoad)
-    return () => {
-      clearTimeout(timer)
-      removeEventListener("message", onMessage)
-      frame?.removeEventListener("load", onLoad)
-    }
-  }, [blob, kind])
-
-  return (
-    <div className="relative size-full">
-      <iframe
-        ref={ref}
-        title={title}
-        sandbox="allow-scripts"
-        srcDoc={srcDoc}
-        referrerPolicy="no-referrer"
-        className={cn("size-full border-0", status !== "ready" && "invisible")}
-      />
-      {status === "loading" && (
-        <div className="absolute inset-0">
-          <Spinner text="Загрузка…" />
-        </div>
-      )}
-      {typeof status === "object" && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-6 text-center text-[13px] text-muted-foreground">
-          <p className="font-medium text-foreground">Не удалось показать файл</p>
-          <p className="max-w-sm">{status.error}</p>
-          <p>Скачай оригинал.</p>
-        </div>
-      )}
-    </div>
   )
 }

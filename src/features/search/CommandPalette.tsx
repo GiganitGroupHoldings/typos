@@ -16,6 +16,7 @@ import {
 import { useDeferredValue, useEffect, useMemo, useState } from "react"
 import { useLocation, useNavigate } from "react-router"
 import { useShallow } from "zustand/react/shallow"
+import { translate, useLanguage } from "@/app/i18n"
 import { useUi } from "@/app/store"
 import {
   Command,
@@ -74,6 +75,8 @@ const GROUPS: { kind: SearchHit["kind"]; heading: string }[] = [
 ]
 
 export function CommandPalette() {
+  useLanguage()
+  const untitled = translate("Без названия")
   const open = useUi((s) => s.paletteOpen)
   const setOpen = useUi((s) => s.setPaletteOpen)
   const ui = useUi.getState
@@ -86,7 +89,7 @@ export function CommandPalette() {
   const [query, setQuery] = useState("")
   const deferred = useDeferredValue(query)
 
-  const index = useMemo(() => createIndex(buildDocs(data)), [data])
+  const index = useMemo(() => createIndex(buildDocs(data, untitled)), [data, untitled])
   const hits = useMemo(() => search(index, deferred), [index, deferred])
 
   useEffect(() => {
@@ -103,26 +106,26 @@ export function CommandPalette() {
   const actions: Action[] = [
     {
       id: "new-note",
-      label: "Новый конспект",
-      keywords: "создать заметку",
+      label: translate("Новый конспект"),
+      keywords: translate("создать заметку"),
       icon: SquarePen,
       shortcut: "Alt N",
       run: () => void createNote(currentSubject),
     },
-    { id: "new-subject", label: "Новый предмет", keywords: "создать папку", icon: FolderPlus, run: openNewSubject },
+    { id: "new-subject", label: translate("Новый предмет"), keywords: translate("создать папку"), icon: FolderPlus, run: openNewSubject },
     ...(currentSubject
       ? [
           {
             id: "new-board",
-            label: "Новая доска",
-            keywords: "создать полотно схема стикеры miro",
+            label: translate("Новая доска"),
+            keywords: translate("создать полотно схема стикеры miro"),
             icon: LayoutDashboard,
             run: () => void createBoard(currentSubject),
           },
           {
             id: "review",
-            label: "Повторение закрепа",
-            keywords: "карточки экзамен",
+            label: translate("Повторение закрепа"),
+            keywords: translate("карточки экзамен"),
             icon: GraduationCap,
             run: () => navigate(`/s/${currentSubject}/review`),
           },
@@ -130,18 +133,49 @@ export function CommandPalette() {
       : []),
     {
       id: "pins",
-      label: "Открыть закреп",
-      keywords: "панель текст ссылки",
+      label: translate("Открыть закреп"),
+      keywords: translate("панель текст ссылки"),
       icon: Pin,
       shortcut: "Ctrl J",
       run: () => ui().setPinsOpen(true),
     },
-    { id: "reading", label: "Режим чтения", keywords: "читать serif", icon: BookOpen, run: () => ui().toggleReading() },
-    { id: "focus", label: "Режим фокуса", keywords: "скрыть колонки", icon: Focus, shortcut: "Ctrl \\", run: () => ui().toggleFocus() },
-    { id: "theme", label: "Сменить тему", keywords: "тёмная светлая", icon: Moon, run: () => ui().cycleTheme() },
-    { id: "trash", label: "Корзина", keywords: "удалённые восстановить", icon: Trash2, run: () => navigate("/trash") },
-    { id: "clear", label: "Удалить все предметы…", keywords: "очистить начать заново", icon: Eraser, run: openClearSubjects },
-    { id: "storage", label: "Хранилище", keywords: "хранилище диск", icon: FolderOpen, run: () => navigate("/welcome") },
+    {
+      id: "reading",
+      label: translate("Режим чтения"),
+      keywords: translate("читать serif"),
+      icon: BookOpen,
+      run: () => ui().toggleReading(),
+    },
+    {
+      id: "focus",
+      label: translate("Режим фокуса"),
+      keywords: translate("скрыть колонки"),
+      icon: Focus,
+      shortcut: "Ctrl \\",
+      run: () => ui().toggleFocus(),
+    },
+    { id: "theme", label: translate("Сменить тему"), keywords: translate("тёмная светлая"), icon: Moon, run: () => ui().cycleTheme() },
+    {
+      id: "trash",
+      label: translate("Корзина"),
+      keywords: translate("удалённые восстановить"),
+      icon: Trash2,
+      run: () => navigate("/trash"),
+    },
+    {
+      id: "clear",
+      label: translate("Удалить все предметы…"),
+      keywords: translate("очистить начать заново"),
+      icon: Eraser,
+      run: openClearSubjects,
+    },
+    {
+      id: "storage",
+      label: translate("Хранилище"),
+      keywords: translate("хранилище диск"),
+      icon: FolderOpen,
+      run: () => navigate("/welcome"),
+    },
   ]
   const q = normalize(deferred.trim())
   const shownActions = q ? actions.filter((a) => normalize(`${a.label} ${a.keywords}`).includes(q)) : actions
@@ -166,18 +200,24 @@ export function CommandPalette() {
   }
 
   return (
-    <CommandDialog open={open} onOpenChange={setOpen} title="Поиск и команды" description="Поиск по хранилищу" className="sm:max-w-xl">
+    <CommandDialog
+      open={open}
+      onOpenChange={setOpen}
+      title={translate("Поиск и команды")}
+      description={translate("Поиск по хранилищу")}
+      className="sm:max-w-xl"
+    >
       <Command shouldFilter={false} className="rounded-none!">
-        <CommandInput value={query} onValueChange={setQuery} placeholder="Поиск" />
+        <CommandInput value={query} onValueChange={setQuery} placeholder={translate("Поиск")} />
         <CommandList className="thin-scrollbar max-h-[min(60vh,460px)]">
-          <CommandEmpty>Ничего не найдено</CommandEmpty>
+          <CommandEmpty>{translate("Ничего не найдено")}</CommandEmpty>
 
           {!q && recent.length > 0 && (
-            <CommandGroup heading="Недавние">
+            <CommandGroup heading={translate("Недавние")}>
               {recent.map((n) => (
                 <CommandItem key={n.id} value={`recent-${n.id}`} onSelect={() => run(() => navigate(`/s/${n.subjectId}/n/${n.id}`))}>
                   <FileText />
-                  <span className="flex-1 truncate">{n.title || "Без названия"}</span>
+                  <span className="flex-1 truncate">{n.title || translate("Без названия")}</span>
                   <span className="text-xs text-muted-foreground">{relativeTime(n.updated)}</span>
                 </CommandItem>
               ))}
@@ -189,7 +229,7 @@ export function CommandPalette() {
               const group = hits.filter((h) => h.kind === kind)
               if (!group.length) return null
               return (
-                <CommandGroup key={kind} heading={heading}>
+                <CommandGroup key={kind} heading={translate(heading)}>
                   {group.map((h) => {
                     const subject = subjectById.get(h.subjectId)
                     return (
@@ -212,7 +252,7 @@ export function CommandPalette() {
             })}
 
           {!q && (
-            <CommandGroup heading="Предметы">
+            <CommandGroup heading={translate("Предметы")}>
               {data.subjects.map((s) => (
                 <CommandItem key={s.id} value={`subject-${s.id}`} onSelect={() => run(() => navigate(`/s/${s.id}`))}>
                   <SubjectBadge subject={s} size="sm" />
@@ -225,7 +265,7 @@ export function CommandPalette() {
           {shownActions.length > 0 && (
             <>
               <CommandSeparator />
-              <CommandGroup heading="Действия">
+              <CommandGroup heading={translate("Действия")}>
                 {shownActions.map((a) => (
                   <CommandItem key={a.id} value={`action-${a.id}`} onSelect={() => run(a.run)}>
                     <a.icon />

@@ -2,6 +2,7 @@ import { ArrowLeft, Check, RotateCcw, Shuffle, X } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
 import { Link, Navigate, useParams } from "react-router"
+import { translate, useLanguage } from "@/app/i18n"
 import { Button } from "@/components/ui/Button"
 import { Kbd } from "@/components/ui/Kbd"
 import { SubjectBadge, subjectStyle } from "@/features/subjects/visuals"
@@ -13,6 +14,7 @@ import type { Pin } from "@/types"
 import { usePinsOf, useSubject } from "@/vault/hooks"
 
 export function ReviewPage() {
+  useLanguage()
   const { subjectId } = useParams()
   const subject = useSubject(subjectId)
   const pins = usePinsOf(subjectId).filter(isQuizPin)
@@ -23,10 +25,12 @@ export function ReviewPage() {
   if (!pins.length)
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 p-10 text-center">
-        <p className="text-[17px] font-semibold">Повторять пока нечего</p>
-        <p className="text-sm text-muted-foreground">Включи «Включать в викторину» у нужных закрепов предмета «{subject.name}».</p>
+        <p className="text-[17px] font-semibold">{translate("Повторять пока нечего")}</p>
+        <p className="text-sm text-muted-foreground">
+          {translate("Включи «Включать в викторину» у нужных закрепов предмета «{0}».", subject.name)}
+        </p>
         <Button variant="outline" asChild>
-          <Link to={`/s/${subject.id}?tab=pins`}>К закрепу</Link>
+          <Link to={`/s/${subject.id}?tab=pins`}>{translate("К закрепу")}</Link>
         </Button>
       </div>
     )
@@ -34,13 +38,13 @@ export function ReviewPage() {
   return (
     <motion.div {...pageEnter} style={subjectStyle(subject)} className="mx-auto flex min-h-full w-full max-w-2xl flex-col px-6 py-8">
       <header className="mb-6 flex items-center gap-3">
-        <Button variant="ghost" size="icon-sm" asChild aria-label="Назад к предмету">
+        <Button variant="ghost" size="icon-sm" asChild aria-label={translate("Назад к предмету")}>
           <Link to={`/s/${subject.id}`} viewTransition>
             <ArrowLeft />
           </Link>
         </Button>
         <SubjectBadge subject={subject} size="sm" />
-        <h1 className="flex-1 truncate text-[17px] font-semibold">Повторение</h1>
+        <h1 className="flex-1 truncate text-[17px] font-semibold">{translate("Повторение")}</h1>
         <Button
           variant={shuffled ? "secondary" : "ghost"}
           size="sm"
@@ -50,7 +54,7 @@ export function ReviewPage() {
             setRound((r) => r + 1)
           }}
         >
-          <Shuffle /> Перемешать
+          <Shuffle /> {translate("Перемешать")}
         </Button>
       </header>
       <Session key={`${round}-${pins.map((p) => p.id).join()}`} pins={pins} shuffle={shuffled} onRestart={() => setRound((r) => r + 1)} />
@@ -68,6 +72,7 @@ function shuffleArr<T>(a: T[]): T[] {
 }
 
 function Session({ pins, shuffle, onRestart }: { pins: Pin[]; shuffle: boolean; onRestart: () => void }) {
+  useLanguage()
   const initial = useMemo(() => (shuffle ? shuffleArr(pins) : pins), [pins, shuffle])
   const [queue, setQueue] = useState(initial)
   const [flipped, setFlipped] = useState(false)
@@ -116,12 +121,12 @@ function Session({ pins, shuffle, onRestart }: { pins: Pin[]; shuffle: boolean; 
         <div className="flex size-16 items-center justify-center rounded-full bg-(--subject)/15 text-(--subject)">
           <Check className="size-8" />
         </div>
-        <h2 className="text-[24px] font-bold tracking-tight">Круг пройден</h2>
+        <h2 className="text-[24px] font-bold tracking-tight">{translate("Круг пройден")}</h2>
         <p className="text-[15px] text-muted-foreground">
-          С первого раза: {firstTry.size} из {plural(total, ["карточки", "карточек", "карточек"])}
+          {translate("С первого раза: {0} из {1}", firstTry.size, plural(total, ["карточки", "карточек", "карточек"]))}
         </p>
         <Button className="mt-2" onClick={onRestart}>
-          <RotateCcw /> Ещё раз
+          <RotateCcw /> {translate("Ещё раз")}
         </Button>
       </motion.div>
     )
@@ -147,7 +152,7 @@ function Session({ pins, shuffle, onRestart }: { pins: Pin[]; shuffle: boolean; 
             key={card.id + (missed.has(card.id) ? "-again" : "")}
             type="button"
             onClick={() => setFlipped((f) => !f)}
-            aria-label={flipped ? "Показать вопрос" : "Показать ответ"}
+            aria-label={flipped ? translate("Показать вопрос") : translate("Показать ответ")}
             initial={{ opacity: 0, x: 40 }}
             animate={{ opacity: 1, x: 0, transition: { duration: dur.slow, ease: easeOut } }}
             exit={{ opacity: 0, x: -40, transition: { duration: dur.base * 0.65, ease: easeIn } }}
@@ -159,10 +164,10 @@ function Session({ pins, shuffle, onRestart }: { pins: Pin[]; shuffle: boolean; 
               className="relative size-full min-h-72 [transform-style:preserve-3d]"
             >
               <Face>
-                <span className="text-[13px] font-semibold tracking-wide text-(--subject) uppercase">Вспомни</span>
+                <span className="text-[13px] font-semibold tracking-wide text-(--subject) uppercase">{translate("Вспомни")}</span>
                 <span className="mt-3 text-[28px] leading-tight font-bold tracking-tight">{card.title}</span>
                 <span className="mt-6 text-[13px] text-muted-foreground">
-                  Перевернуть <Kbd>Пробел</Kbd>
+                  {translate("Перевернуть")} <Kbd>{translate("Пробел")}</Kbd>
                 </span>
               </Face>
               <Face back>
@@ -183,10 +188,10 @@ function Session({ pins, shuffle, onRestart }: { pins: Pin[]; shuffle: boolean; 
 
       <div className="mt-6 grid grid-cols-2 gap-3" aria-hidden={!flipped}>
         <Button size="lg" variant="outline" disabled={!flipped} onClick={() => answer(false)}>
-          <X /> Не помню <Kbd className="ml-1">←</Kbd>
+          <X /> {translate("Не помню")} <Kbd className="ml-1">←</Kbd>
         </Button>
         <Button size="lg" disabled={!flipped} onClick={() => answer(true)}>
-          <Check /> Помню <Kbd className="ml-1">→</Kbd>
+          <Check /> {translate("Помню")} <Kbd className="ml-1">→</Kbd>
         </Button>
       </div>
     </div>

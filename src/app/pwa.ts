@@ -2,18 +2,19 @@ import { isTauri } from "@tauri-apps/api/core"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { registerSW } from "virtual:pwa-register"
+import { translate } from "@/app/i18n"
 
 export function setupPwa() {
   if (!("serviceWorker" in navigator) || import.meta.env.DEV || isTauri()) return
   const update = registerSW({
     onNeedRefresh() {
-      toast("Доступна новая версия", {
+      toast(translate("Доступна новая версия"), {
         duration: Infinity,
-        action: { label: "Обновить", onClick: () => void update(true) },
+        action: { label: translate("Обновить"), onClick: () => void update(true) },
       })
     },
     onOfflineReady() {
-      toast.success("Готово к работе без интернета")
+      toast.success(translate("Готово к работе без интернета"))
     },
   })
 }

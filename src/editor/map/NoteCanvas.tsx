@@ -1,5 +1,6 @@
 import type { Editor } from "@tiptap/react"
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
+import { translate, useLanguage } from "@/app/i18n"
 import { useUi } from "@/app/store"
 import { useLiquidLens } from "@/components/ui/LiquidLens"
 import { cn } from "@/lib/utils"
@@ -73,6 +74,7 @@ function markEdited(map: NoteMap, nodeIds: string[]): NoteMap {
 }
 
 export function NoteCanvas({ editor, noteId, readOnly }: { editor: Editor; noteId: string; readOnly?: boolean }) {
+  useLanguage()
   const layer = useRef<HTMLDivElement>(null)
   const [map, setMapState] = useState<NoteMap | null>(null)
   const mapRef = useRef<NoteMap | null>(null)
@@ -111,7 +113,7 @@ export function NoteCanvas({ editor, noteId, readOnly }: { editor: Editor; noteI
     void useVault
       .getState()
       .saveNoteMap(noteId, next)
-      .catch((e) => console.warn("Карта не сохранилась", e))
+      .catch((e) => console.warn(translate("Карта не сохранилась"), e))
   }, [noteId])
 
   const commit = useCallback(
@@ -707,6 +709,7 @@ function MapBlock({
   onResizeDown: (e: ReactPointerEvent) => void
   onCommit: (text: string, height: number) => void
 }) {
+  useLanguage()
   const lens = useLiquidLens({ fallback: "liquid liquid-lava" })
   return (
     <div
@@ -733,7 +736,7 @@ function MapBlock({
               <span
                 key={side}
                 role="button"
-                aria-label="Протянуть стрелку"
+                aria-label={translate("Протянуть стрелку")}
                 onPointerDown={(e) => onHandleDown(e, side)}
                 style={{ left: p.x, top: p.y }}
                 className="pointer-events-auto absolute -mt-[7px] -ml-[7px] size-[14px] cursor-crosshair rounded-full border-2 border-background bg-highlight shadow-card transition-transform after:absolute after:-inset-3 after:content-[''] hover:scale-125"
@@ -743,7 +746,7 @@ function MapBlock({
           {selected && (
             <span
               role="button"
-              aria-label="Изменить размер"
+              aria-label={translate("Изменить размер")}
               onPointerDown={onResizeDown}
               className="pointer-events-auto absolute -right-1 -bottom-1 size-3 cursor-nwse-resize rounded-[4px] border-2 border-background bg-highlight after:absolute after:-inset-3 after:content-['']"
             />
@@ -755,6 +758,7 @@ function MapBlock({
 }
 
 function NodeText({ text, editing, onCommit }: { text: string; editing: boolean; onCommit: (text: string, height: number) => void }) {
+  useLanguage()
   const ref = useRef<HTMLDivElement>(null)
   const done = useRef(false)
 
@@ -786,7 +790,7 @@ function NodeText({ text, editing, onCommit }: { text: string; editing: boolean;
           contentEditable="plaintext-only"
           suppressContentEditableWarning
           role="textbox"
-          aria-label="Текст блока"
+          aria-label={translate("Текст блока")}
           aria-multiline
           onPointerDown={(e) => e.stopPropagation()}
           onBlur={finish}
@@ -807,6 +811,7 @@ function NodeText({ text, editing, onCommit }: { text: string; editing: boolean;
 }
 
 function MapHint() {
+  useLanguage()
   const lens = useLiquidLens({ fallback: "liquid liquid-lava" })
   return (
     <div
@@ -817,7 +822,7 @@ function MapHint() {
         "pointer-events-none fixed bottom-[calc(4.5rem+var(--safe-bottom))] left-1/2 z-30 -translate-x-1/2 rounded-full px-4 py-2 text-[12.5px] whitespace-nowrap text-muted-foreground md:bottom-5",
       )}
     >
-      <span>Потяни по фону, чтобы добавить блок. Esc для выхода.</span>
+      <span>{translate("Потяни по фону, чтобы добавить блок. Esc для выхода.")}</span>
     </div>
   )
 }

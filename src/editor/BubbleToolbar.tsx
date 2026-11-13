@@ -18,6 +18,7 @@ import {
 } from "lucide-react"
 import { AnimatePresence, motion, useMotionValue, useSpring, useTransform, type HTMLMotionProps, type MotionValue } from "motion/react"
 import { createContext, useContext, useEffect, useRef, useState, type MouseEvent } from "react"
+import { translate, useLanguage } from "@/app/i18n"
 import { useLiquidLens } from "@/components/ui/LiquidLens"
 import { cn } from "@/lib/utils"
 import { COLOR_LABELS, NOTE_COLORS, type NoteColor } from "./colors"
@@ -141,6 +142,7 @@ export function BubbleToolbar({
   onFormula: () => void
   onPin: (text: string) => void
 }) {
+  useLanguage()
   const [panel, setPanel] = useState<Panel>(null)
   const mouseX = useMotionValue(Infinity)
   const lens = useLiquidLens({ fallback: "liquid liquid-lava" })
@@ -212,7 +214,7 @@ export function BubbleToolbar({
       >
         <div
           role="toolbar"
-          aria-label="Форматирование выделенного"
+          aria-label={translate("Форматирование выделенного")}
           onPointerMove={(e) => e.pointerType === "mouse" && mouseX.set(e.clientX)}
           onPointerLeave={() => mouseX.set(Infinity)}
           style={{
@@ -231,33 +233,39 @@ export function BubbleToolbar({
               aria-expanded={panel === "turn"}
               className="flex h-8 items-center gap-1 rounded-lg px-2 text-[13px] font-medium text-foreground/85 outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
             >
-              {BLOCKS.find((b) => b.id === s.block)?.label}
+              {translate(BLOCKS.find((b) => b.id === s.block)?.label ?? "Текст")}
               <ChevronDown className={cn("size-3.5 transition-transform duration-(--dur-fast)", panel === "turn" && "rotate-180")} />
             </ToolbarButton>
             {s.block !== "code" && (
               <>
                 <Sep />
-                <Btn icon={Bold} label="Жирный" shortcut="Ctrl B" active={s.bold} onClick={() => c().toggleBold().run()} />
-                <Btn icon={Italic} label="Курсив" shortcut="Ctrl I" active={s.italic} onClick={() => c().toggleItalic().run()} />
+                <Btn icon={Bold} label={translate("Жирный")} shortcut="Ctrl B" active={s.bold} onClick={() => c().toggleBold().run()} />
+                <Btn
+                  icon={Italic}
+                  label={translate("Курсив")}
+                  shortcut="Ctrl I"
+                  active={s.italic}
+                  onClick={() => c().toggleItalic().run()}
+                />
                 <Btn
                   icon={Underline}
-                  label="Подчёркнутый"
+                  label={translate("Подчёркнутый")}
                   shortcut="Ctrl U"
                   active={s.underline}
                   onClick={() => c().toggleUnderline().run()}
                 />
                 <Btn
                   icon={Strikethrough}
-                  label="Зачёркнутый"
+                  label={translate("Зачёркнутый")}
                   shortcut="Ctrl Shift S"
                   active={s.strike}
                   onClick={() => c().toggleStrike().run()}
                 />
-                <Btn icon={Code} label="Код" shortcut="Ctrl E" active={s.code} onClick={() => c().toggleCode().run()} />
+                <Btn icon={Code} label={translate("Код")} shortcut="Ctrl E" active={s.code} onClick={() => c().toggleCode().run()} />
                 <Sep />
                 <Btn
                   icon={Link2}
-                  label="Ссылка"
+                  label={translate("Ссылка")}
                   shortcut="Ctrl K"
                   active={s.link || panel === "link"}
                   onClick={() => {
@@ -265,11 +273,11 @@ export function BubbleToolbar({
                     toggle("link")
                   }}
                 />
-                <Btn icon={Radical} label="В формулу" shortcut="Ctrl Shift E" onClick={onFormula} />
+                <Btn icon={Radical} label={translate("В формулу")} shortcut="Ctrl Shift E" onClick={onFormula} />
                 <ToolbarButton
                   type="button"
-                  title="Цвет текста и фона"
-                  aria-label="Цвет текста и фона"
+                  title={translate("Цвет текста и фона")}
+                  aria-label={translate("Цвет текста и фона")}
                   aria-expanded={panel === "color"}
                   onMouseDown={keep}
                   onClick={() => toggle("color")}
@@ -286,7 +294,7 @@ export function BubbleToolbar({
                 <Sep />
                 <Btn
                   icon={Pin}
-                  label="В закреп"
+                  label={translate("В закреп")}
                   onClick={() => {
                     const text = selectionText()
                     if (text) onPin(text)
@@ -307,8 +315,10 @@ export function BubbleToolbar({
               className="glass absolute top-full left-0 mt-1.5 max-w-[calc(100vw-24px)] overflow-x-auto rounded-[0.875rem] p-1.5"
             >
               {panel === "turn" && (
-                <ul role="menu" aria-label="Превратить в" className="w-56">
-                  <li className="px-2 py-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">Превратить в</li>
+                <ul role="menu" aria-label={translate("Превратить в")} className="w-56">
+                  <li className="px-2 py-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                    {translate("Превратить в")}
+                  </li>
                   {BLOCKS.map((b) => (
                     <li key={b.id}>
                       <button
@@ -322,7 +332,7 @@ export function BubbleToolbar({
                         }}
                         className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] outline-none hover:bg-accent focus-visible:bg-accent"
                       >
-                        <span className="flex-1">{b.label}</span>
+                        <span className="flex-1">{translate(b.label)}</span>
                         {s.block === b.id && <Check className="size-3.5 text-highlight" />}
                       </button>
                     </li>
@@ -333,7 +343,7 @@ export function BubbleToolbar({
               {panel === "color" && (
                 <div className="w-60 space-y-2 p-1">
                   <ColorRow
-                    title="Цвет текста"
+                    title={translate("Цвет текста")}
                     kind="text"
                     current={s.textColor}
                     onDefault={() => c().unsetTextColor().run()}
@@ -343,7 +353,7 @@ export function BubbleToolbar({
                     }}
                   />
                   <ColorRow
-                    title="Фон"
+                    title={translate("Фон")}
                     kind="bg"
                     current={s.bgColor === "default" ? null : s.bgColor}
                     onDefault={() => c().unsetHighlight().run()}
@@ -359,7 +369,7 @@ export function BubbleToolbar({
                     className="w-full rounded-lg px-2 py-1.5 text-left text-[13px] outline-none hover:bg-accent focus-visible:bg-accent"
                   >
                     <mark className="rounded px-1" style={{ background: "var(--hl-default)", color: "inherit" }}>
-                      Маркер
+                      {translate("Маркер")}
                     </mark>{" "}
                   </button>
                 </div>
@@ -384,15 +394,15 @@ export function BubbleToolbar({
                         editor.commands.focus()
                       }
                     }}
-                    placeholder="Вставь ссылку…"
-                    aria-label="Адрес ссылки"
+                    placeholder={translate("Вставь ссылку…")}
+                    aria-label={translate("Адрес ссылки")}
                     className="h-8 min-w-0 flex-1 rounded-lg border bg-background/70 px-2 text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   />
-                  <Btn icon={Check} label="Применить" onClick={applyLink} />
+                  <Btn icon={Check} label={translate("Применить")} onClick={applyLink} />
                   {s.link && (
                     <Btn
                       icon={Link2Off}
-                      label="Убрать ссылку"
+                      label={translate("Убрать ссылку")}
                       onClick={() => {
                         c().extendMarkRange("link").unsetLink().run()
                         setPanel(null)
@@ -422,13 +432,14 @@ function ColorRow({
   onPick: (c: NoteColor) => void
   onDefault: () => void
 }) {
+  useLanguage()
   return (
     <div>
       <div className="px-1 pb-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">{title}</div>
       <div className="grid grid-cols-5 gap-1">
-        <Swatch label="Обычный" active={!current} kind={kind} onClick={onDefault} />
+        <Swatch label={translate("Обычный")} active={!current} kind={kind} onClick={onDefault} />
         {NOTE_COLORS.map((c) => (
-          <Swatch key={c} color={c} label={COLOR_LABELS[c]} active={current === c} kind={kind} onClick={() => onPick(c)} />
+          <Swatch key={c} color={c} label={translate(COLOR_LABELS[c])} active={current === c} kind={kind} onClick={() => onPick(c)} />
         ))}
       </div>
     </div>
@@ -448,11 +459,12 @@ function Swatch({
   kind: "text" | "bg"
   onClick: () => void
 }) {
+  useLanguage()
   return (
     <button
       type="button"
       title={label}
-      aria-label={`${kind === "text" ? "Текст" : "Фон"}: ${label}`}
+      aria-label={`${kind === "text" ? translate("Текст") : translate("Фон")}: ${label}`}
       aria-pressed={active}
       onMouseDown={keep}
       onClick={onClick}

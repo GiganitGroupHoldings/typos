@@ -2,6 +2,7 @@ import { ChevronDown, FileDown, FileUp, LayoutDashboard, Maximize2, Plus, Square
 import { motion } from "motion/react"
 import { useEffect } from "react"
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router"
+import { translate, useLanguage } from "@/app/i18n"
 import { useUi } from "@/app/store"
 import { Button } from "@/components/ui/Button"
 import {
@@ -51,6 +52,7 @@ function useCurrentTab(): SubjectTab {
 }
 
 function CreateButton({ subject, tab }: { subject: Subject; tab: SubjectTab }) {
+  useLanguage()
   const createNote = useCreateNote()
   const createBoard = useCreateBoard()
   const navigate = useNavigate()
@@ -58,60 +60,70 @@ function CreateButton({ subject, tab }: { subject: Subject; tab: SubjectTab }) {
     return (
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button variant="ghost" size="icon-sm" aria-label="Новая доска" onClick={() => void createBoard(subject.id)}>
+          <Button variant="ghost" size="icon-sm" aria-label={translate("Новая доска")} onClick={() => void createBoard(subject.id)}>
             <Plus />
           </Button>
         </TooltipTrigger>
-        <TooltipContent>Новая доска</TooltipContent>
+        <TooltipContent>{translate("Новая доска")}</TooltipContent>
       </Tooltip>
     )
   if (tab === "pins")
     return (
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button variant="ghost" size="icon-sm" aria-label="Новый закреп" onClick={() => openPinEditor({ subjectId: subject.id })}>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={translate("Новый закреп")}
+            onClick={() => openPinEditor({ subjectId: subject.id })}
+          >
             <Plus />
           </Button>
         </TooltipTrigger>
-        <TooltipContent>Новый закреп</TooltipContent>
+        <TooltipContent>{translate("Новый закреп")}</TooltipContent>
       </Tooltip>
     )
   if (tab === "tools")
     return (
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button variant="ghost" size="icon-sm" aria-label="Добавить в проекты" onClick={() => openToolDialog({ subjectId: subject.id })}>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={translate("Добавить в проекты")}
+            onClick={() => openToolDialog({ subjectId: subject.id })}
+          >
             <FileUp />
           </Button>
         </TooltipTrigger>
-        <TooltipContent>Добавить файл в проекты</TooltipContent>
+        <TooltipContent>{translate("Добавить файл в проекты")}</TooltipContent>
       </Tooltip>
     )
   return (
     <div className="flex">
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button variant="ghost" size="icon-sm" aria-label="Новый конспект" onClick={() => createNote(subject.id)}>
+          <Button variant="ghost" size="icon-sm" aria-label={translate("Новый конспект")} onClick={() => createNote(subject.id)}>
             <SquarePen />
           </Button>
         </TooltipTrigger>
         <TooltipContent className="flex items-center gap-2">
-          Новый конспект <Kbd>Alt N</Kbd>
+          {translate("Новый конспект")} <Kbd>Alt N</Kbd>
         </TooltipContent>
       </Tooltip>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon-sm" className="w-5" aria-label="Конспект по шаблону">
+          <Button variant="ghost" size="icon-sm" className="w-5" aria-label={translate("Конспект по шаблону")}>
             <ChevronDown />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuLabel>Шаблон</DropdownMenuLabel>
+          <DropdownMenuLabel>{translate("Шаблон")}</DropdownMenuLabel>
           {templates.map((t) => (
             <DropdownMenuItem key={t.id} onSelect={() => createNote(subject.id, t.id)}>
               <div>
-                <div>{t.label}</div>
-                <div className="text-[12px] text-muted-foreground">{t.hint}</div>
+                <div>{translate(t.label)}</div>
+                <div className="text-[12px] text-muted-foreground">{translate(t.hint)}</div>
               </div>
             </DropdownMenuItem>
           ))}
@@ -119,8 +131,8 @@ function CreateButton({ subject, tab }: { subject: Subject; tab: SubjectTab }) {
           <DropdownMenuItem onSelect={() => void pickAndImportNotes(subject.id, navigate)}>
             <FileDown />
             <div>
-              <div>Импорт из .md…</div>
-              <div className="text-[12px] text-muted-foreground">Можно сразу с картинками</div>
+              <div>{translate("Импорт из .md…")}</div>
+              <div className="text-[12px] text-muted-foreground">{translate("Можно сразу с картинками")}</div>
             </div>
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -130,6 +142,7 @@ function CreateButton({ subject, tab }: { subject: Subject; tab: SubjectTab }) {
 }
 
 function SubjectList({ className, onNavigate }: { className?: string; onNavigate?: () => void }) {
+  useLanguage()
   const { subjectId, noteId, toolId, boardId } = useParams()
   const subject = useSubject(subjectId)
   const notes = useNotesOf(subjectId)
@@ -158,7 +171,7 @@ function SubjectList({ className, onNavigate }: { className?: string; onNavigate
         <CreateButton subject={subject} tab={tab} />
       </header>
 
-      <div role="tablist" aria-label="Разделы предмета" className="liquid-2 mx-4 mb-2 flex rounded-xl p-1">
+      <div role="tablist" aria-label={translate("Разделы предмета")} className="liquid-2 mx-4 mb-2 flex rounded-xl p-1">
         {tabs.map((t) => (
           <button
             key={t.id}
@@ -171,7 +184,7 @@ function SubjectList({ className, onNavigate }: { className?: string; onNavigate
             )}
           >
             {tab === t.id && <motion.span layoutId="tab-pill" transition={spring} className="liquid-active absolute inset-0 rounded-lg" />}
-            <span className="relative">{t.label}</span>
+            <span className="relative">{translate(t.label)}</span>
           </button>
         ))}
       </div>
@@ -195,11 +208,11 @@ function SubjectList({ className, onNavigate }: { className?: string; onNavigate
                 className="min-w-0 flex-1 rounded-lg px-3 py-2.5 outline-none focus-visible:ring-2 focus-visible:ring-ring data-active:bg-accent"
               >
                 <div className={cn("truncate text-[14px] font-semibold", !n.title && "text-muted-foreground")}>
-                  {n.title || "Без названия"}
+                  {n.title || translate("Без названия")}
                 </div>
                 <div className="mt-0.5 flex gap-2 text-[13px] text-muted-foreground">
                   <span className="shrink-0 tabular-nums">{relativeTime(n.updated)}</span>
-                  <span className="truncate">{n.excerpt || "Нет текста"}</span>
+                  <span className="truncate">{n.excerpt || translate("Нет текста")}</span>
                 </div>
               </Link>
               <ExportMarkdownButton note={n} />
@@ -224,7 +237,7 @@ function SubjectList({ className, onNavigate }: { className?: string; onNavigate
                   >
                     <div className="flex items-center gap-2">
                       <span className="flex-1 truncate text-[14px] font-semibold">{p.title}</span>
-                      {floating && <Maximize2 aria-label="Открыто в окне" className="size-3.5 text-highlight" />}
+                      {floating && <Maximize2 aria-label={translate("Открыто в окне")} className="size-3.5 text-highlight" />}
                     </div>
                     {p.tex && (
                       <div className="mt-1 overflow-hidden text-[13px] text-muted-foreground">
@@ -232,7 +245,7 @@ function SubjectList({ className, onNavigate }: { className?: string; onNavigate
                       </div>
                     )}
                     {p.text && <p className="mt-1 line-clamp-2 text-[13px] text-muted-foreground">{p.text}</p>}
-                    <span className="sr-only">Открыть в плавающем окне</span>
+                    <span className="sr-only">{translate("Открыть в плавающем окне")}</span>
                   </button>
                 )}
                 <PinActions
@@ -290,7 +303,7 @@ function SubjectList({ className, onNavigate }: { className?: string; onNavigate
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[14px] font-medium">{b.name}</span>
                   <span className="block truncate text-[12px] text-muted-foreground">
-                    {b.data.nodes.length ? plural(b.data.nodes.length, ["элемент", "элемента", "элементов"]) : "Пустая"}
+                    {b.data.nodes.length ? plural(b.data.nodes.length, ["элемент", "элемента", "элементов"]) : translate("Пустая")}
                     {boardText(b.data) && <span className="ml-2">{boardText(b.data).split("\n")[0]}</span>}
                   </span>
                 </span>
@@ -310,7 +323,7 @@ function SubjectList({ className, onNavigate }: { className?: string; onNavigate
 
       {drop.over && (
         <div className="pointer-events-none absolute inset-x-3 bottom-3 rounded-xl bg-primary px-3 py-2 text-center text-[13px] font-medium text-primary-foreground shadow-float">
-          Импорт файлов
+          {translate("Импорт файлов")}
         </div>
       )}
     </div>
@@ -318,14 +331,16 @@ function SubjectList({ className, onNavigate }: { className?: string; onNavigate
 }
 
 export function ListColumn() {
+  useLanguage()
   return (
-    <aside aria-label="Содержимое предмета" className="hidden w-[300px] shrink-0 border-r md:flex">
+    <aside aria-label={translate("Содержимое предмета")} className="hidden w-[300px] shrink-0 border-r md:flex">
       <SubjectList className="w-full" />
     </aside>
   )
 }
 
 export function SubjectListSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+  useLanguage()
   const { pathname } = useLocation()
 
   // Список закрывается после перехода к конспекту, но остаётся открытым при смене вкладки.
@@ -336,8 +351,8 @@ export function SubjectListSheet({ open, onOpenChange }: { open: boolean; onOpen
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="left" aria-describedby={undefined} className="w-[88vw] max-w-[340px] gap-0 p-0 pt-8 md:hidden">
         <SheetHeader className="sr-only">
-          <SheetTitle>Содержание предмета</SheetTitle>
-          <SheetDescription>Конспекты, закреп, проекты и доски</SheetDescription>
+          <SheetTitle>{translate("Содержание предмета")}</SheetTitle>
+          <SheetDescription>{translate("Конспекты, закреп, проекты и доски")}</SheetDescription>
         </SheetHeader>
         <SubjectList className="h-full" onNavigate={() => onOpenChange(false)} />
       </SheetContent>
@@ -346,27 +361,28 @@ export function SubjectListSheet({ open, onOpenChange }: { open: boolean; onOpen
 }
 
 function EmptyList({ tab, subjectId }: { tab: SubjectTab; subjectId: string }) {
+  useLanguage()
   const createNote = useCreateNote()
   const createBoard = useCreateBoard()
   const content = {
     notes: {
-      title: "Нет конспектов",
-      action: "Новый конспект",
+      title: translate("Нет конспектов"),
+      action: translate("Новый конспект"),
       run: () => createNote(subjectId),
     },
     pins: {
-      title: "Нет закрепов",
-      action: "Закреп",
+      title: translate("Нет закрепов"),
+      action: translate("Закреп"),
       run: () => openPinEditor({ subjectId }),
     },
     tools: {
-      title: "Нет проектов",
-      action: "Добавить файл",
+      title: translate("Нет проектов"),
+      action: translate("Добавить файл"),
       run: () => openToolDialog({ subjectId }),
     },
     boards: {
-      title: "Нет досок",
-      action: "Новая доска",
+      title: translate("Нет досок"),
+      action: translate("Новая доска"),
       run: () => void createBoard(subjectId),
     },
   }[tab]

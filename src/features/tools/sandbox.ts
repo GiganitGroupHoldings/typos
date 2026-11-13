@@ -13,12 +13,13 @@ export const TOOL_CSP = [
   "base-uri 'none'",
 ].join("; ")
 
-export function withCsp(html: string): string {
+export function withCsp(html: string, runtime?: string): string {
   const meta = `<meta http-equiv="Content-Security-Policy" content="${TOOL_CSP}">`
+  const script = runtime ? `<script>${runtime}</script>` : ""
   const source = html.replace(/^\uFEFF/, "")
 
   const doctype = source.match(/^\s*<!doctype\b[^>]*>/i)?.[0] ?? ""
-  return `${doctype}${meta}${source.slice(doctype.length)}`
+  return `${doctype}${meta}${script}${source.slice(doctype.length)}`
 }
 
 export type ToolMessage = { type: "theme"; value: "light" | "dark" }

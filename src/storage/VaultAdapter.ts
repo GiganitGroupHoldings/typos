@@ -1,3 +1,5 @@
+import { translate } from "@/app/i18n"
+
 export type EntryKind = "file" | "dir"
 
 export interface Entry {
@@ -28,15 +30,15 @@ export const joinPath = (...parts: string[]) =>
     .join("/")
 
 export function storageLabel(adapter: VaultAdapter | null): string | null {
-  if (adapter?.kind === "folder") return `папка «${adapter.label}»`
-  if (adapter?.kind === "remote") return `сервер «${adapter.label}»`
+  if (adapter?.kind === "folder") return translate("папка «{0}»", adapter.label)
+  if (adapter?.kind === "remote") return translate("сервер «{0}»", adapter.label)
   return null
 }
 
 export const dirname = (path: string) => path.split("/").slice(0, -1).join("/")
 export const basename = (path: string) => path.split("/").pop() ?? ""
 
-export function safeName(name: string, fallback = "Без названия"): string {
+export function safeName(name: string, fallback = translate("Без названия")): string {
   const cleaned = name
     .normalize("NFC")
     // oxlint-disable-next-line no-control-regex

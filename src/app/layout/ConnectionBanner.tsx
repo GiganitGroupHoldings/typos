@@ -1,6 +1,7 @@
 import { KeyRound, WifiOff } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Link } from "react-router"
+import { translate, useLanguage } from "@/app/i18n"
 import { Button } from "@/components/ui/Button"
 import { plural } from "@/lib/format"
 import { useConnection } from "@/storage/connection"
@@ -23,6 +24,7 @@ function useSecondsUntil(at?: number) {
 }
 
 export function ConnectionBanner() {
+  useLanguage()
   const status = useConnection((s) => s.status)
   const retryAt = useConnection((s) => s.retryAt)
   const retry = useConnection((s) => s.retry)
@@ -43,21 +45,25 @@ export function ConnectionBanner() {
       )}
       <div className="min-w-0 flex-1 text-[13px]">
         <p className="font-semibold">
-          {status === "offline" ? `Нет связи с сервером «${label}»` : `Сервер «${label}»: ключ недействителен`}
+          {status === "offline" ? translate("Нет связи с сервером «{0}»", label) : translate("Сервер «{0}»: ключ недействителен", label)}
         </p>
         <p className="text-muted-foreground">
           {status === "offline"
-            ? `Изменения сохранены на устройстве.${pending ? ` Ожидают отправки: ${plural(pending, ["файл", "файла", "файлов"])}.` : ""}${seconds ? ` Повтор через ${seconds} с.` : " Подключение…"}`
-            : "Изменения сохранены на устройстве. Подключись по новой ссылке."}
+            ? translate(
+                "Изменения сохранены на устройстве.{0}{1}",
+                pending ? translate(" Ожидают отправки: {0}.", plural(pending, ["файл", "файла", "файлов"])) : "",
+                seconds ? translate(" Повтор через {0} с.", seconds) : translate(" Подключение…"),
+              )
+            : translate("Изменения сохранены на устройстве. Подключись по новой ссылке.")}
         </p>
       </div>
       {status === "offline" ? (
         <Button size="sm" variant="outline" onClick={retry}>
-          Повторить
+          {translate("Повторить")}
         </Button>
       ) : (
         <Button size="sm" variant="outline" asChild>
-          <Link to="/welcome">Подключить</Link>
+          <Link to="/welcome">{translate("Подключить")}</Link>
         </Button>
       )}
     </div>

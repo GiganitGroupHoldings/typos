@@ -39,4 +39,13 @@ describe("CSP тулз", () => {
     expect(doc.documentElement.getAttribute("lang")).toBe("ru")
     expect(doc.documentElement.dataset.theme).toBe("dark")
   })
+
+  it("мост слайдов ставится после CSP и не ломает политику", () => {
+    const doc = new DOMParser().parseFromString(withCsp("<main></main>", "window.__slides = true"), "text/html")
+    const csp = doc.querySelector('meta[http-equiv="Content-Security-Policy"]')
+    const script = doc.querySelector("script")
+    expect(csp).not.toBeNull()
+    expect(script?.textContent).toBe("window.__slides = true")
+    if (csp && script) expect(csp.compareDocumentPosition(script) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
 })

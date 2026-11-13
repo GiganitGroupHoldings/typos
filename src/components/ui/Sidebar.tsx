@@ -2,6 +2,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { PanelLeftIcon } from "lucide-react"
 import { Slot } from "radix-ui"
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ComponentProps, type CSSProperties } from "react"
+import { translate, useLanguage } from "@/app/i18n"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { Separator } from "@/components/ui/Separator"
@@ -139,6 +140,7 @@ function Sidebar({
   variant?: "sidebar" | "floating" | "inset"
   collapsible?: "offcanvas" | "icon" | "none"
 }) {
+  useLanguage()
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
 
   if (collapsible === "none") {
@@ -170,8 +172,8 @@ function Sidebar({
           side={side}
         >
           <SheetHeader className="sr-only">
-            <SheetTitle>Предметы</SheetTitle>
-            <SheetDescription>Список предметов</SheetDescription>
+            <SheetTitle>{translate("Предметы")}</SheetTitle>
+            <SheetDescription>{translate("Список предметов")}</SheetDescription>
           </SheetHeader>
           <div className="flex h-full w-full flex-col">{children}</div>
         </SheetContent>
@@ -225,6 +227,7 @@ function Sidebar({
 }
 
 function SidebarTrigger({ className, onClick, ...props }: ComponentProps<typeof Button>) {
+  useLanguage()
   const { toggleSidebar } = useSidebar()
 
   return (
@@ -241,22 +244,23 @@ function SidebarTrigger({ className, onClick, ...props }: ComponentProps<typeof 
       {...props}
     >
       <PanelLeftIcon />
-      <span className="sr-only">Показать или скрыть предметы</span>
+      <span className="sr-only">{translate("Показать или скрыть предметы")}</span>
     </Button>
   )
 }
 
 function SidebarRail({ className, ...props }: ComponentProps<"button">) {
+  useLanguage()
   const { toggleSidebar } = useSidebar()
 
   return (
     <button
       data-sidebar="rail"
       data-slot="sidebar-rail"
-      aria-label="Показать или скрыть предметы"
+      aria-label={translate("Показать или скрыть предметы")}
       tabIndex={-1}
       onClick={toggleSidebar}
-      title="Показать или скрыть предметы"
+      title={translate("Показать или скрыть предметы")}
       className={cn(
         "absolute inset-y-0 z-20 hidden w-4 transition-all ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:start-1/2 after:w-[2px] hover:after:bg-sidebar-border sm:flex ltr:-translate-x-1/2 rtl:-translate-x-1/2",
         "in-data-[side=left]:cursor-w-resize in-data-[side=right]:cursor-e-resize",

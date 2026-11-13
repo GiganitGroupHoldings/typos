@@ -2,9 +2,11 @@ import { isTauri } from "@tauri-apps/api/core"
 import { getCurrentWindow } from "@tauri-apps/api/window"
 import { Copy, Minus, Square, X } from "lucide-react"
 import { useEffect, useState } from "react"
+import { translate, useLanguage } from "@/app/i18n"
 import { cn } from "@/lib/utils"
 
 export function WindowControls() {
+  useLanguage()
   const [maximized, setMaximized] = useState(false)
 
   useEffect(() => {
@@ -31,13 +33,19 @@ export function WindowControls() {
 
   return (
     <div className="ml-1 flex items-center gap-0.5">
-      <button type="button" aria-label="Свернуть" title="Свернуть" onClick={() => void win.minimize()} className={btn}>
+      <button
+        type="button"
+        aria-label={translate("Свернуть")}
+        title={translate("Свернуть")}
+        onClick={() => void win.minimize()}
+        className={btn}
+      >
         <Minus />
       </button>
       <button
         type="button"
-        aria-label={maximized ? "Восстановить" : "Развернуть"}
-        title={maximized ? "Восстановить" : "Развернуть"}
+        aria-label={maximized ? translate("Восстановить") : translate("Развернуть")}
+        title={maximized ? translate("Восстановить") : translate("Развернуть")}
         onClick={() => void win.toggleMaximize()}
         className={cn(btn, "[&_svg]:size-3.5")}
       >
@@ -45,8 +53,8 @@ export function WindowControls() {
       </button>
       <button
         type="button"
-        aria-label="Закрыть"
-        title="Закрыть"
+        aria-label={translate("Закрыть")}
+        title={translate("Закрыть")}
         onClick={() => void win.close()}
         className={cn(btn, "hover:bg-[#e81123] hover:text-white")}
       >

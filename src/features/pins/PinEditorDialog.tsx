@@ -2,6 +2,7 @@ import { motion } from "motion/react"
 import { useId, useState, type FormEvent, type ReactNode } from "react"
 import { toast } from "sonner"
 import { create } from "zustand"
+import { translate, useLanguage } from "@/app/i18n"
 import { Button } from "@/components/ui/Button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/Dialog"
 import { Input } from "@/components/ui/Input"
@@ -57,6 +58,7 @@ const pinModes = [
 type PinMode = (typeof pinModes)[number]["id"]
 
 function PinForm({ target, pin }: { target: Target; pin?: Pin }) {
+  useLanguage()
   const [title, setTitle] = useState(pin?.title ?? target.title ?? "")
   const [tex, setTex] = useState(pin?.tex ?? target.tex ?? "")
   const [text, setText] = useState(pin?.text ?? target.text ?? "")
@@ -89,11 +91,11 @@ function PinForm({ target, pin }: { target: Target; pin?: Pin }) {
       if (pin) await vault.updatePin(pin.id, input)
       else {
         await vault.createPin(target.subjectId, input)
-        toast.success("Закреплено", { description: title.trim() })
+        toast.success(translate("Закреплено"), { description: title.trim() })
       }
       close()
     } catch (error) {
-      toast.error("Не удалось сохранить закреп", { description: errorText(error) })
+      toast.error(translate("Не удалось сохранить закреп"), { description: errorText(error) })
     } finally {
       setBusy(false)
     }
@@ -102,10 +104,10 @@ function PinForm({ target, pin }: { target: Target; pin?: Pin }) {
   return (
     <form onSubmit={submit} onKeyDown={submitOnCtrlEnter} className="flex min-h-0 flex-1 flex-col gap-4">
       <DialogHeader className="shrink-0">
-        <DialogTitle>{pin ? "Изменить закреп" : "Новый закреп"}</DialogTitle>
+        <DialogTitle>{pin ? translate("Изменить закреп") : translate("Новый закреп")}</DialogTitle>
       </DialogHeader>
       <div className="thin-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
-        <div role="tablist" aria-label="Вид закрепа" className="relative isolate flex rounded-full bg-foreground/5 p-1">
+        <div role="tablist" aria-label={translate("Вид закрепа")} className="relative isolate flex rounded-full bg-foreground/5 p-1">
           <motion.span
             aria-hidden
             initial={false}
@@ -146,20 +148,20 @@ function PinForm({ target, pin }: { target: Target; pin?: Pin }) {
                 mode === item.id ? "text-foreground" : "text-muted-foreground hover:text-foreground",
               )}
             >
-              <span className="relative z-10">{item.label}</span>
+              <span className="relative z-10">{translate(item.label)}</span>
             </motion.button>
           ))}
         </div>
         <div>
           <label htmlFor="pin-title" className="mb-1 block text-[13px] font-medium">
-            Название
+            {translate("Название")}
           </label>
           <Input
             id="pin-title"
             autoFocus
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder={link ? "Полезный сайт" : "Что важно запомнить"}
+            placeholder={link ? translate("Полезный сайт") : translate("Что важно запомнить")}
             maxLength={120}
           />
         </div>
@@ -168,7 +170,7 @@ function PinForm({ target, pin }: { target: Target; pin?: Pin }) {
             <>
               <div>
                 <label htmlFor="pin-url" className="mb-1 block text-[13px] font-medium">
-                  Адрес ссылки
+                  {translate("Адрес ссылки")}
                 </label>
                 <Input
                   id="pin-url"
@@ -180,11 +182,11 @@ function PinForm({ target, pin }: { target: Target; pin?: Pin }) {
                   aria-invalid={!!url.trim() && !validUrl}
                 />
                 {!!url.trim() && !validUrl && (
-                  <p className="mt-1 text-[12px] text-destructive">Вставь ссылку на сайт: https://example.com.</p>
+                  <p className="mt-1 text-[12px] text-destructive">{translate("Вставь ссылку на сайт: https://example.com.")}</p>
                 )}
               </div>
               <fieldset>
-                <legend className="mb-2 text-[13px] font-medium">Иконка</legend>
+                <legend className="mb-2 text-[13px] font-medium">{translate("Иконка")}</legend>
                 <label className="mb-3 flex items-center gap-2 text-[13px]">
                   <input
                     type="checkbox"
@@ -192,7 +194,7 @@ function PinForm({ target, pin }: { target: Target; pin?: Pin }) {
                     onChange={(e) => setIcon(e.target.checked ? "favicon" : "globe")}
                     className="size-4 accent-highlight"
                   />{" "}
-                  Иконка сайта
+                  {translate("Иконка сайта")}
                 </label>
                 <div className="flex flex-wrap gap-1.5">
                   {SUBJECT_ICONS.map(({ id, label }) => {
@@ -202,8 +204,8 @@ function PinForm({ target, pin }: { target: Target; pin?: Pin }) {
                         key={id}
                         whileTap={{ scale: 0.9 }}
                         type="button"
-                        aria-label={label}
-                        title={label}
+                        aria-label={translate(label)}
+                        title={translate(label)}
                         aria-pressed={icon === id}
                         onClick={() => setIcon(id)}
                         className={cn(
@@ -219,7 +221,7 @@ function PinForm({ target, pin }: { target: Target; pin?: Pin }) {
               </fieldset>
               <div className="flex items-center gap-3 rounded-xl border px-3 py-3">
                 <PinLinkIcon icon={icon} url={validUrl} />
-                <span className="min-w-0 break-words text-[14px] font-semibold">{title.trim() || "Название ссылки"}</span>
+                <span className="min-w-0 break-words text-[14px] font-semibold">{title.trim() || translate("Название ссылки")}</span>
               </div>
             </>
           ) : (
@@ -243,14 +245,18 @@ function PinForm({ target, pin }: { target: Target; pin?: Pin }) {
                       aria-live="polite"
                       className="thin-scrollbar mt-2 min-h-12 overflow-x-auto rounded-lg bg-muted/60 px-3 py-2 text-center"
                     >
-                      {tex.trim() ? <Tex tex={tex} block /> : <span className="text-[12px] text-muted-foreground">Предпросмотр LaTeX</span>}
+                      {tex.trim() ? (
+                        <Tex tex={tex} block />
+                      ) : (
+                        <span className="text-[12px] text-muted-foreground">{translate("Предпросмотр LaTeX")}</span>
+                      )}
                     </div>
                   </div>
                 </>
               )}
               <div>
                 <label htmlFor={`pin-text-${mode}`} className="mb-1 block text-[13px] font-medium">
-                  Пояснение
+                  {translate("Пояснение")}
                 </label>
                 <textarea
                   id={`pin-text-${mode}`}
@@ -258,7 +264,9 @@ function PinForm({ target, pin }: { target: Target; pin?: Pin }) {
                   onChange={(event) => setText(event.target.value)}
                   rows={mode === "text" ? 4 : 2}
                   placeholder={
-                    mode === "formula" ? "Что означает формула и когда её применять" : "Определение, памятка, полезная информация…"
+                    mode === "formula"
+                      ? translate("Что означает формула и когда её применять")
+                      : translate("Определение, памятка, полезная информация…")
                   }
                   className="w-full resize-y rounded-lg border bg-background px-3 py-2 text-[14px] outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
@@ -267,7 +275,7 @@ function PinForm({ target, pin }: { target: Target; pin?: Pin }) {
                 <>
                   <label className="flex items-center gap-2 text-[13px]">
                     <input type="checkbox" checked={quiz} onChange={(e) => setQuiz(e.target.checked)} className="size-4 accent-highlight" />{" "}
-                    Включать в викторину
+                    {translate("Включать в викторину")}
                   </label>
                 </>
               )}
@@ -277,10 +285,10 @@ function PinForm({ target, pin }: { target: Target; pin?: Pin }) {
       </div>
       <DialogFooter className="shrink-0 bg-transparent">
         <Button type="button" variant="ghost" onClick={close}>
-          Отмена
+          {translate("Отмена")}
         </Button>
         <Button type="submit" disabled={!title.trim() || (link && !validUrl) || busy}>
-          {pin ? "Сохранить" : "Закрепить"}
+          {pin ? translate("Сохранить") : translate("Закрепить")}
         </Button>
       </DialogFooter>
     </form>

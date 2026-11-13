@@ -5,6 +5,7 @@ import { BookOpen, Check, Loader2, MoreHorizontal, PenLine, Trash2, Type } from 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { useNavigate } from "react-router"
 import { toast } from "sonner"
+import { translate, useLanguage } from "@/app/i18n"
 import { useUi, type NoteFont } from "@/app/store"
 import { Button } from "@/components/ui/Button"
 import {
@@ -43,6 +44,7 @@ import { MobileEditorBar } from "./MobileEditorBar"
 import { SideToolbar } from "./SideToolbar"
 import { TableMenu } from "./TableMenu"
 import { htmlMathToNodes, looksLikeMarkdown, normalizeMarkdownMath } from "./texImport"
+import { useEditorLanguage } from "./useEditorLanguage"
 
 const SAVE_DELAY = 500
 
@@ -106,7 +108,7 @@ export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolea
       const fresh = useVault.getState().notes.find((n) => n.id === id)
       if (fresh) return loadFromDisk(fresh.body)
       conflict.current = false
-      toast("Конспект удалили или переместили")
+      toast(translate("Конспект удалили или переместили"))
       navigate(`/s/${note.subjectId}`)
     }
     const keepMine = async () => {
@@ -119,15 +121,15 @@ export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolea
         setSaveState("saved")
       } catch (e) {
         setSaveState("error")
-        toast.error("Не удалось сохранить", { description: errorText(e) })
+        toast.error(translate("Не удалось сохранить"), { description: errorText(e) })
       }
     }
-    toast.warning("Конспект изменён вне приложения", {
+    toast.warning(translate("Конспект изменён вне приложения"), {
       id: `conflict-${id}`,
-      description: "Какую версию сохранить?",
+      description: translate("Какую версию сохранить?"),
       duration: Infinity,
-      action: { label: "С диска", onClick: () => void takeDisk() },
-      cancel: { label: "Текущую", onClick: () => void keepMine() },
+      action: { label: translate("С диска"), onClick: () => void takeDisk() },
+      cancel: { label: translate("Текущую"), onClick: () => void keepMine() },
     })
   }, [id, loadFromDisk, navigate, note.subjectId])
 
@@ -171,7 +173,7 @@ export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolea
           return showConflict()
         }
         setSaveState("error")
-        toast.error("Не удалось сохранить", { description: errorText(e) })
+        toast.error(translate("Не удалось сохранить"), { description: errorText(e) })
       } finally {
         saving.current--
       }
@@ -209,7 +211,8 @@ export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolea
         diagrams: true,
       }),
       Placeholder.configure({
-        placeholder: ({ node }) => (node.type.name === "heading" && node.attrs.level === 1 ? "Заголовок" : "Текст конспекта"),
+        placeholder: ({ node }) =>
+          node.type.name === "heading" && node.attrs.level === 1 ? translate("Заголовок") : translate("Текст конспекта"),
       }),
       Folding.configure({ noteId: note.id }),
     ],
@@ -228,7 +231,7 @@ export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolea
             .insertContentAt(at ?? ed.state.selection.from, { type: "image", attrs: { src, alt: "" } })
             .run()
         } catch (e) {
-          toast.error("Не удалось вставить картинку", { description: errorText(e) })
+          toast.error(translate("Не удалось вставить картинку"), { description: errorText(e) })
         }
       }
     },
@@ -244,8 +247,6 @@ export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolea
         : { content: normalizeMarkdownMath(note.body), contentType: "markdown" as const }),
       autofocus: autoFocus ? "start" : false,
       editorProps: {
-        attributes: { "aria-label": "Текст конспекта", spellcheck: "true", lang: "ru" },
-
         handleKeyDown: (view, event) => {
           const mod = event.ctrlKey || event.metaKey
           if (!mod || view.state.selection.empty) return false
@@ -295,6 +296,7 @@ export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolea
     },
     [id],
   )
+  useEditorLanguage(editor, true)
   useEffect(() => {
     editorRef.current = editor
   }, [editor])
@@ -307,7 +309,7 @@ export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolea
     const base = useVault.getState().noteBase(id)
     if (base === undefined || sameBody(base, note.body)) return
     loadFromDisk(note.body)
-    toast("Конспект обновлён", { id: `reload-${id}` })
+    toast(translate("Конспект обновлён"), { id: `reload-${id}` })
   }, [editor, id, note.body, loadFromDisk])
 
   const reading = useUi((s) => s.readingMode)
@@ -408,7 +410,7 @@ export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolea
     flush()
     const undo = await useVault.getState().trashNote(id)
     navigate(`/s/${note.subjectId}`)
-    toastUndo("Конспект в корзине", undo, () => navigate(`/s/${note.subjectId}/n/${id}`))
+    toastUndo(translate("Конспект в корзине"), undo, () => navigate(`/s/${note.subjectId}/n/${id}`))
   }
 
   const currentMarkdown = () => {
@@ -465,7 +467,7 @@ export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolea
         <div className="flex shrink-0 items-center gap-1">
           {reading ? (
             <Button variant="ghost" size="sm" onClick={toggleReading}>
-              <PenLine /> Редактировать
+              <PenLine /> {translate("Редактировать")}
             </Button>
           ) : (
             <SaveIndicator state={saveState} />
@@ -473,17 +475,17 @@ export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolea
           <ExportMarkdownButton note={note} getMarkdown={currentMarkdown} />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon-sm" aria-label="Действия с конспектом">
+              <Button variant="ghost" size="icon-sm" aria-label={translate("Действия с конспектом")}>
                 <MoreHorizontal />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuCheckboxItem checked={reading} onCheckedChange={toggleReading}>
-                <BookOpen /> Режим чтения
+                <BookOpen /> {translate("Режим чтения")}
               </DropdownMenuCheckboxItem>
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>
-                  <Type /> Шрифт текста
+                  <Type /> {translate("Шрифт текста")}
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
                   <DropdownMenuRadioGroup value={font} onValueChange={(v) => setNoteFont(v as NoteFont)}>
@@ -495,19 +497,19 @@ export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolea
               </DropdownMenuSub>
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>
-                  <Type /> Размер текста
+                  <Type /> {translate("Размер текста")}
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
                   <DropdownMenuRadioGroup value={noteSize} onValueChange={(v) => setNoteSize(v as NoteSize)}>
-                    <DropdownMenuRadioItem value="s">Мелкий</DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="m">Обычный</DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="l">Крупный</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="s">{translate("Мелкий")}</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="m">{translate("Обычный")}</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="l">{translate("Крупный")}</DropdownMenuRadioItem>
                   </DropdownMenuRadioGroup>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
               <DropdownMenuSeparator />
               <DropdownMenuItem variant="destructive" onSelect={remove}>
-                <Trash2 /> Удалить конспект
+                <Trash2 /> {translate("Удалить конспект")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -523,7 +525,7 @@ export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolea
         style={{ "--note-scale": noteScale(noteSize) } as CSSProperties}
       >
         <p className="mb-5 text-center text-[13px] text-muted-foreground">
-          {note.created === note.updated ? "Новый конспект" : `Изменено ${relativeTime(note.updated)}`}
+          {note.created === note.updated ? translate("Новый конспект") : translate("Изменено {0}", relativeTime(note.updated))}
         </p>
 
         <div className="relative">
@@ -539,6 +541,7 @@ export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolea
 }
 
 function SaveIndicator({ state }: { state: SaveState }) {
+  useLanguage()
   return (
     <span
       aria-live="polite"
@@ -549,15 +552,15 @@ function SaveIndicator({ state }: { state: SaveState }) {
     >
       {state === "saving" || state === "dirty" ? (
         <>
-          <Loader2 className="size-3 animate-spin" /> Сохранение…
+          <Loader2 className="size-3 animate-spin" /> {translate("Сохранение…")}
         </>
       ) : state === "error" ? (
-        "Ошибка сохранения"
+        translate("Ошибка сохранения")
       ) : state === "conflict" ? (
-        "Не сохранено: файл изменён вне приложения"
+        translate("Не сохранено: файл изменён вне приложения")
       ) : (
         <>
-          <Check className="size-3" /> Сохранено
+          <Check className="size-3" /> {translate("Сохранено")}
         </>
       )}
     </span>
