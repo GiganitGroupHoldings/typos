@@ -166,6 +166,7 @@ const metalShader = `
     float F = 0.0;
     vec2 G = vec2(0.0);
     float S = 0.0;
+    float R = 0.0;
     vec2 shadowOff = vec2(0.012, -0.022);
     for (int s = 0; s < MAX; s++) {
       float a = uAlpha[s];
@@ -175,8 +176,11 @@ const metalShader = `
       vec2 d = p - c;
       float dd = dot(d, d) + 1e-5;
       float k = a * r * r;
-      F += k / dd;
+      float w = k / dd;
+      F += w;
       G += -2.0 * k * d / (dd * dd);
+      // Средний радиус пятен в этой точке: нужен, чтобы наклон поверхности не зависел от размера капли.
+      R += w * r * sqrt(a);
       vec2 ds = d - shadowOff;
       S += k / (dot(ds, ds) + 1e-5);
     }
@@ -194,8 +198,13 @@ const metalShader = `
 
     float h = sqrt(clamp(1.0 - 1.0 / max(F, 1.0), 0.0, 1.0));
 
-    vec2 outward = -G / max(length(G), 1e-5);
-    vec3 n = normalize(vec3(outward * sqrt(max(1.0 - h * h, 0.0)), max(h, 0.001)));
+    // Нормаль — из градиента высоты, а не из направления градиента F: там, где поля двух
+    // капель гасят друг друга, у градиента F нет направления, и на стыке получался «щипок».
+    float radius = R / max(F, 1e-5);
+    vec2 slope = clamp(-G * (radius / (2.0 * F * F * max(h, 1e-4))), vec2(-64.0), vec2(64.0));
+    vec3 n = normalize(vec3(slope, 1.0));
+    float tilt = length(n.xy);
+    vec2 outward = tilt > 1e-4 ? n.xy / tilt : vec2(0.0);
     vec3 reflected = reflect(vec3(0.0, 0.0, -1.0), n);
 
     float coord = dot(reflected.xy, vec2(0.55, 0.85)) * 0.48 + reflected.z * 0.22 + iTime * 0.018;

@@ -24,6 +24,11 @@ import {
 import { BlockHandle } from "@/editor/blocks/BlockHandle"
 import { Folding } from "@/editor/blocks/folding"
 import { NoteCanvas } from "@/editor/map/NoteCanvas"
+import { AiAssistant } from "@/features/ai/AiAssistant"
+import { CLOSED_ASSISTANT, type AssistantView } from "@/features/ai/assistantView"
+import { chat } from "@/features/ai/client"
+import { loadAiKey } from "@/features/ai/keyStore"
+import { AI_TEXT_LIMIT, summaryRequest, textRequest, type AiAction, type AiCommand, type SummaryScope } from "@/features/ai/prompts"
 import { exportMarkdown } from "@/features/notes/exportMarkdown"
 import { ExportMarkdownButton } from "@/features/notes/ExportMarkdownButton"
 import { openPinEditor } from "@/features/pins/PinEditorDialog"
@@ -73,6 +78,9 @@ export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolea
   const fileInput = useRef<HTMLInputElement>(null)
   const [linkRequest, setLinkRequest] = useState(0)
   const formulaRef = useRef<() => void>(() => {})
+  const [assistant, setAssistant] = useState<AssistantView>(CLOSED_ASSISTANT)
+  const assistantSeq = useRef(0)
+  const aiBusy = useRef(false)
 
   const conflict = useRef(false)
   const saving = useRef(0)
@@ -209,6 +217,7 @@ export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolea
         onBlockMathCreated: (pos) => openMath(pos, "block", "edit"),
         resolveImage: (src) => vaultFileUrl(joinPath(noteDir.current, src)),
         diagrams: true,
+        ascii: true,
       }),
       Placeholder.configure({
         placeholder: ({ node }) =>
@@ -395,6 +404,14 @@ export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolea
     formulaRef.current = formulaFromSelection
   })
 
+  useEffect(
+    () => () => {
+      // Ответ, пришедший после закрытия конспекта, уже никому не нужен.
+      assistantSeq.current++
+    },
+    [],
+  )
+
   const pinSelection = (text: string) => {
     const title = text.length > 60 ? `${text.slice(0, 57).trimEnd()}…` : text
     openPinEditor({ subjectId: note.subjectId, title, text: text.length > 60 ? text : undefined })
@@ -406,11 +423,96 @@ export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolea
     openPinEditor({ subjectId: note.subjectId, tex: latex })
   }
 
+  const runAi = async (action: AiAction) => {
+    const ed = editorRef.current
+    if (!ed || ed.isDestroyed || aiBusy.current) return
+    const { from, to } = ed.state.selection
+    const text = ed.state.doc.textBetween(from, to, "\n").trim()
+    if (!text) {
+      toast.error(translate("Выдели текст"))
+      return
+    }
+    if (text.length > AI_TEXT_LIMIT) {
+      toast.error(translate("Слишком много текста для помощника. Выдели фрагмент покороче."))
+      return
+    }
+    aiBusy.current = true
+    const toastId = toast.loading(translate("Помощник работает…"))
+    try {
+      const key = await loadAiKey().catch(() => null)
+      const { aiBaseUrl, aiModel } = useUi.getState()
+      const request = textRequest(action, text)
+      const result = await chat({ baseUrl: aiBaseUrl, model: aiModel }, key ?? "", request.messages, request)
+      if (ed.isDestroyed) {
+        toast.dismiss(toastId)
+        return
+      }
+      // Пока модель отвечала, выделение могли изменить: старые позиции уже не те.
+      if (ed.state.doc.textBetween(from, to, "\n").trim() !== text) {
+        toast.error(translate("Текст изменился, пока помощник думал. Попробуй ещё раз."), { id: toastId })
+        return
+      }
+      ed.chain().focus().deleteRange({ from, to }).insertContent(result, { contentType: "markdown" }).run()
+      toast.success(translate("Готово"), {
+        id: toastId,
+        action: { label: translate("Отменить"), onClick: () => ed.commands.undo() },
+      })
+    } catch (e) {
+      if (ed.isDestroyed) toast.dismiss(toastId)
+      else toast.error(translate("Помощник не справился"), { id: toastId, description: errorText(e) })
+    } finally {
+      aiBusy.current = false
+    }
+  }
+
   const remove = async () => {
     flush()
     const undo = await useVault.getState().trashNote(id)
     navigate(`/s/${note.subjectId}`)
     toastUndo(translate("Конспект в корзине"), undo, () => navigate(`/s/${note.subjectId}/n/${id}`))
+  }
+
+  const closeAssistant = () => {
+    assistantSeq.current++
+    setAssistant(CLOSED_ASSISTANT)
+  }
+
+  const runSummary = async (scope: SummaryScope) => {
+    const ed = editorRef.current
+    if (!ed || ed.isDestroyed) return
+    const { from, to } = ed.state.selection
+    const text =
+      scope === "selection"
+        ? ed.state.doc.textBetween(from, to, "\n").trim()
+        : ed.state.doc.textBetween(0, ed.state.doc.content.size, "\n").trim()
+    if (!text) {
+      toast.error(translate(scope === "selection" ? "Выдели текст" : "В конспекте пока нет текста — напиши его или выдели фрагмент."))
+      return
+    }
+    const ticket = ++assistantSeq.current
+    const request = summaryRequest(text, scope)
+    setAssistant({ status: "loading", scope, text: "", truncated: request.truncated, error: "" })
+    try {
+      const key = await loadAiKey().catch(() => null)
+      const { aiBaseUrl, aiModel } = useUi.getState()
+      const result = await chat({ baseUrl: aiBaseUrl, model: aiModel }, key ?? "", request.messages, request)
+      if (ticket !== assistantSeq.current) return
+      setAssistant({ status: "ready", scope, text: result, truncated: request.truncated, error: "" })
+    } catch (e) {
+      if (ticket !== assistantSeq.current) return
+      setAssistant({ status: "error", scope, text: "", truncated: request.truncated, error: errorText(e) })
+    }
+  }
+
+  const openAssistant = () => {
+    const ed = editorRef.current
+    const selected = ed && !ed.isDestroyed ? ed.state.doc.textBetween(ed.state.selection.from, ed.state.selection.to, "\n").trim() : ""
+    void runSummary(selected ? "selection" : "note")
+  }
+
+  const runAiCommand = (command: AiCommand) => {
+    if (command === "summary") void runSummary("selection")
+    else void runAi(command)
   }
 
   const currentMarkdown = () => {
@@ -447,7 +549,15 @@ export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolea
           onNoteSize={setNoteSize}
         />
       )}
-      {editor && <BubbleToolbar editor={editor} linkRequest={linkRequest} onFormula={formulaFromSelection} onPin={pinSelection} />}
+      {editor && (
+        <BubbleToolbar
+          editor={editor}
+          linkRequest={linkRequest}
+          onFormula={formulaFromSelection}
+          onPin={pinSelection}
+          onAi={runAiCommand}
+        />
+      )}
       {editor && <TableMenu editor={editor} />}
 
       <div className="pointer-events-none sticky top-14 z-10 -mt-1 hidden items-center justify-end gap-2 px-3 pt-1 [&>*]:pointer-events-auto md:top-12 md:flex">
@@ -536,6 +646,9 @@ export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolea
       </div>
 
       <MathPopover edit={math} onSave={saveMath} onDelete={deleteMath} onCancel={cancelMath} onPin={pinMath} />
+      {editor && (
+        <AiAssistant view={assistant} onOpen={openAssistant} onClose={closeAssistant} onRetry={() => void runSummary(assistant.scope)} />
+      )}
     </div>
   )
 }

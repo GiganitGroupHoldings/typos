@@ -1,3 +1,4 @@
+mod keys;
 mod links;
 mod paths;
 mod vault;
@@ -8,6 +9,9 @@ pub fn run() {
     .plugin(tauri_plugin_dialog::init())
     .manage(vault::Granted::default())
     .invoke_handler(tauri::generate_handler![
+      keys::ai_key_get,
+      keys::ai_key_set,
+      keys::ai_key_delete,
       links::open_web_link,
       vault::vault_saved,
       vault::vault_pick,

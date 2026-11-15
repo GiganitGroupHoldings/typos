@@ -1,6 +1,7 @@
 import CodeBlock, { type CodeBlockOptions } from "@tiptap/extension-code-block"
 import type { Node as PMNode } from "@tiptap/pm/model"
 import { translate } from "@/app/i18n"
+import { asciiNodeView } from "@/editor/ascii"
 import { mapSlots } from "@/editor/map/slots"
 import { codeHash } from "@/editor/map/types"
 
@@ -76,18 +77,21 @@ function fit(view: HTMLElement) {
 
 export interface DiagramCodeBlockOptions extends CodeBlockOptions {
   diagrams: boolean
+  ascii: boolean
 }
 
 export const DiagramCodeBlock = CodeBlock.extend<DiagramCodeBlockOptions>({
   addOptions() {
-    return { ...this.parent!(), diagrams: false }
+    return { ...this.parent!(), diagrams: false, ascii: false }
   },
 
   addNodeView() {
-    if (!this.options.diagrams) return null
+    if (!this.options.diagrams && !this.options.ascii) return null
     const prefix = this.options.languageClassPrefix ?? "language-"
     return ({ node, editor, getPos }) => {
       const lang = node.attrs.language as string | null
+
+      if (lang === "ascii" && this.options.ascii) return asciiNodeView({ node, editor, getPos, prefix })
 
       if (lang !== "mermaid") {
         const pre = document.createElement("pre")

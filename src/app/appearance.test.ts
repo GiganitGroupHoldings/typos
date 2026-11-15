@@ -4,12 +4,21 @@ import { afterEach, expect, it, vi } from "vitest"
 import { accentFromHex } from "@/lib/accentColor"
 import { useAccentSync } from "./accent"
 import { useUi } from "./store"
+import { useThemeSync } from "./theme"
 import { normalizeZoom, zoomShortcut } from "./zoomValue"
 
 vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true)
 
 afterEach(() => {
-  useUi.setState({ responsiveAccent: true, fixedAccent: "#5078d4", desktopZoom: 100 })
+  useUi.setState({
+    responsiveAccent: true,
+    fixedAccent: "#5078d4",
+    desktopZoom: 100,
+    backdrop: "nebula",
+    bgColor: null,
+  })
+  vi.unstubAllGlobals()
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true)
 })
 
 it("сохраняет настройки и восстанавливает старые предпочтения без потери темы", async () => {
@@ -39,6 +48,48 @@ it("отклоняет неверный цвет и ограничивает м�
   expect(useUi.getState()).toMatchObject({ fixedAccent: "#5078d4", desktopZoom: 200 })
   expect(normalizeZoom(NaN)).toBe(100)
   expect(normalizeZoom(1)).toBe(50)
+})
+
+it("хранит цвет фона и восстанавливает режим аски из старых настроек", async () => {
+  useUi.getState().setBgColor("#1A2B3C")
+  expect(useUi.getState().bgColor).toBe("#1a2b3c")
+  useUi.getState().setBgColor("не цвет")
+  expect(useUi.getState().bgColor).toBe("#1a2b3c")
+  useUi.getState().setBgColor(null)
+  expect(useUi.getState().bgColor).toBeNull()
+
+  localStorage.setItem(
+    "studynotes-ui",
+    JSON.stringify({ version: 2, state: { bgColor: "#12AB34", asciiPattern: "orbit", backdrop: "ascii" } }),
+  )
+  await useUi.persist.rehydrate()
+  expect(useUi.getState()).toMatchObject({ bgColor: "#12ab34", backdrop: "ascii" })
+
+  localStorage.setItem(
+    "studynotes-ui",
+    JSON.stringify({ version: 2, state: { bgColor: "url(x)", asciiPattern: "noise", backdrop: "nope" } }),
+  )
+  await useUi.persist.rehydrate()
+  expect(useUi.getState()).toMatchObject({ bgColor: null, backdrop: "nebula" })
+})
+
+it("выбранный цвет фона попадает в переменную --app-bg и снимается при возврате к теме", async () => {
+  vi.stubGlobal("matchMedia", () => ({ matches: false, addEventListener() {}, removeEventListener() {} }))
+  const host = document.createElement("div")
+  const root = createRoot(host)
+  function Sync() {
+    useThemeSync()
+    return null
+  }
+  try {
+    useUi.getState().setBgColor("#123456")
+    await act(async () => root.render(createElement(Sync)))
+    expect(document.documentElement.style.getPropertyValue("--app-bg")).toBe("#123456")
+    await act(async () => useUi.getState().setBgColor(null))
+    expect(document.documentElement.style.getPropertyValue("--app-bg")).toBe("")
+  } finally {
+    await act(async () => root.unmount())
+  }
 })
 
 it("фиксированный акцент сохраняется при переходах и снова следует предмету после включения", async () => {

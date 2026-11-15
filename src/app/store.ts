@@ -1,13 +1,19 @@
 import { create } from "zustand"
 import { createJSONStorage, persist } from "zustand/middleware"
 import type { Language } from "@/app/i18n"
+import { isAiProvider, providerPreset, type AiProvider } from "@/features/ai/providers"
 import { normalizeNoteSize, type NoteSize } from "@/lib/noteSize"
 import { normalizeZoom } from "./zoomValue"
 
 export type ThemePref = "light" | "dark" | "system"
 export type NoteFont = "inter" | "golos" | "serif"
 
-export type Backdrop = "nebula" | "metal"
+export type Backdrop = "nebula" | "metal" | "ascii"
+
+export interface BallPosition {
+  x: number
+  y: number
+}
 
 export interface FloatingWindow {
   id: string
@@ -26,6 +32,11 @@ interface UiState {
   noteFont: NoteFont
   noteSize: NoteSize
   backdrop: Backdrop
+  bgColor: string | null
+  aiProvider: AiProvider
+  aiBaseUrl: string
+  aiModel: string
+  aiBall: BallPosition | null
   responsiveAccent: boolean
   fixedAccent: string
   desktopZoom: number
@@ -33,6 +44,11 @@ interface UiState {
   setFixedAccent: (value: string) => void
   setDesktopZoom: (value: number) => void
   setBackdrop: (value: Backdrop) => void
+  setBgColor: (value: string | null) => void
+  setAiProvider: (value: AiProvider) => void
+  setAiBaseUrl: (value: string) => void
+  setAiModel: (value: string) => void
+  setAiBall: (value: BallPosition | null) => void
 
   readingMode: boolean
   focusMode: boolean
@@ -80,6 +96,15 @@ const safeStorage = createJSONStorage(() => {
 })
 
 const order: ThemePref[] = ["light", "dark", "system"]
+const backdrops: Backdrop[] = ["nebula", "metal", "ascii"]
+
+/** Точные границы знает окно, а здесь важно лишь отсечь мусор из старого storage. */
+function readBallPosition(value: unknown): BallPosition | null {
+  if (!value || typeof value !== "object") return null
+  const { x, y } = value as Partial<BallPosition>
+  if (typeof x !== "number" || typeof y !== "number" || !Number.isFinite(x) || !Number.isFinite(y)) return null
+  return { x: Math.min(Math.max(0, x), 100_000), y: Math.min(Math.max(0, y), 100_000) }
+}
 
 export const useUi = create<UiState>()(
   persist(
@@ -90,6 +115,11 @@ export const useUi = create<UiState>()(
       noteFont: "inter",
       noteSize: "m",
       backdrop: "nebula",
+      bgColor: null,
+      aiProvider: "openai",
+      aiBaseUrl: providerPreset("openai").baseUrl,
+      aiModel: providerPreset("openai").model,
+      aiBall: null,
       responsiveAccent: true,
       fixedAccent: "#5078d4",
       desktopZoom: 100,
@@ -99,6 +129,16 @@ export const useUi = create<UiState>()(
       },
       setDesktopZoom: (desktopZoom) => set({ desktopZoom: normalizeZoom(desktopZoom) }),
       setBackdrop: (backdrop) => set({ backdrop }),
+      setBgColor: (bgColor) => {
+        if (bgColor === null) set({ bgColor: null })
+        else if (/^#[0-9a-f]{6}$/i.test(bgColor)) set({ bgColor: bgColor.toLowerCase() })
+      },
+      setAiProvider: (aiProvider) => {
+        if (isAiProvider(aiProvider)) set({ aiProvider })
+      },
+      setAiBaseUrl: (aiBaseUrl) => set({ aiBaseUrl: aiBaseUrl.trim().slice(0, 300) }),
+      setAiModel: (aiModel) => set({ aiModel: aiModel.trim().slice(0, 100) }),
+      setAiBall: (aiBall) => set({ aiBall: readBallPosition(aiBall) }),
       readingMode: false,
       focusMode: false,
       pinsOpen: false,
@@ -109,7 +149,7 @@ export const useUi = create<UiState>()(
       windows: [],
       setTheme: (theme) => set({ theme }),
       cycleTheme: () => set((s) => ({ theme: order[(order.indexOf(s.theme) + 1) % order.length] })),
-      toggleBackdrop: () => set((s) => ({ backdrop: s.backdrop === "metal" ? "nebula" : "metal" })),
+      toggleBackdrop: () => set((s) => ({ backdrop: backdrops[(backdrops.indexOf(s.backdrop) + 1) % backdrops.length] })),
       setNoteFont: (noteFont) => set({ noteFont }),
       setNoteSize: (noteSize) => set({ noteSize: normalizeNoteSize(noteSize) }),
       toggleReading: () => set((s) => ({ readingMode: !s.readingMode })),
@@ -146,6 +186,11 @@ export const useUi = create<UiState>()(
         noteFont: s.noteFont,
         noteSize: s.noteSize,
         backdrop: s.backdrop,
+        bgColor: s.bgColor,
+        aiProvider: s.aiProvider,
+        aiBaseUrl: s.aiBaseUrl,
+        aiModel: s.aiModel,
+        aiBall: s.aiBall,
         phonePreview: s.phonePreview,
         responsiveAccent: s.responsiveAccent,
         fixedAccent: s.fixedAccent,
@@ -153,11 +198,19 @@ export const useUi = create<UiState>()(
       }),
       merge: (persisted, current) => {
         const saved = (persisted ?? {}) as Partial<UiState>
+        const aiProvider = isAiProvider(saved.aiProvider) ? saved.aiProvider : "openai"
+        const preset = providerPreset(aiProvider)
         return {
           ...current,
           ...saved,
+          aiProvider,
+          aiBaseUrl: typeof saved.aiBaseUrl === "string" && saved.aiBaseUrl.length <= 300 ? saved.aiBaseUrl : preset.baseUrl,
+          aiModel: typeof saved.aiModel === "string" && saved.aiModel.trim() ? saved.aiModel.slice(0, 100) : preset.model,
+          aiBall: readBallPosition(saved.aiBall),
           language: saved.language === "en" ? "en" : "ru",
           noteSize: normalizeNoteSize(saved.noteSize),
+          backdrop: saved.backdrop === "metal" || saved.backdrop === "ascii" ? saved.backdrop : "nebula",
+          bgColor: typeof saved.bgColor === "string" && /^#[0-9a-f]{6}$/i.test(saved.bgColor) ? saved.bgColor.toLowerCase() : null,
           responsiveAccent: typeof saved.responsiveAccent === "boolean" ? saved.responsiveAccent : true,
           fixedAccent: typeof saved.fixedAccent === "string" && /^#[0-9a-f]{6}$/i.test(saved.fixedAccent) ? saved.fixedAccent : "#5078d4",
           desktopZoom: normalizeZoom(saved.desktopZoom ?? 100),

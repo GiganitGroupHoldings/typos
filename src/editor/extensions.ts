@@ -90,6 +90,7 @@ export interface ExtensionOptions {
   resolveImage?: (src: string) => Promise<string | null>
 
   diagrams?: boolean
+  ascii?: boolean
 }
 
 const VaultImage = Image.extend<{ resolve?: ExtensionOptions["resolveImage"] } & Record<string, unknown>>({
@@ -118,14 +119,14 @@ const VaultImage = Image.extend<{ resolve?: ExtensionOptions["resolveImage"] } &
   },
 })
 
-export function buildExtensions({ onMathClick, onBlockMathCreated, resolveImage, diagrams = false }: ExtensionOptions = {}) {
+export function buildExtensions({ onMathClick, onBlockMathCreated, resolveImage, diagrams = false, ascii = false }: ExtensionOptions = {}) {
   return [
     StarterKit.configure({
       heading: { levels: [1, 2, 3] },
       link: { openOnClick: false, autolink: true },
       codeBlock: false,
     }),
-    DiagramCodeBlock.configure({ diagrams }),
+    DiagramCodeBlock.configure({ diagrams, ascii }),
     TaskList,
     TaskItem.configure({ nested: true }),
 

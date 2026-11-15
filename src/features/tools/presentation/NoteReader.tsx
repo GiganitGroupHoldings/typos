@@ -18,6 +18,7 @@ export function NoteReader({ note }: { note: Note }) {
       buildExtensions({
         resolveImage: (src) => vaultFileUrl(joinPath(dirname(note.path), src)),
         diagrams: true,
+        ascii: true,
       }),
     [note.path],
   )

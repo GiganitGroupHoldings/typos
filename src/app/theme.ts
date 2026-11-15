@@ -19,11 +19,14 @@ export function useResolvedTheme(): "light" | "dark" {
 
 export function useThemeSync() {
   const theme = useResolvedTheme()
+  const bgColor = useUi((s) => s.bgColor)
   useEffect(() => {
     const root = document.documentElement
     root.classList.toggle("dark", theme === "dark")
     root.style.colorScheme = theme
+    if (bgColor) root.style.setProperty("--app-bg", bgColor)
+    else root.style.removeProperty("--app-bg")
     const meta = document.querySelector('meta[name="theme-color"]')
-    meta?.setAttribute("content", theme === "dark" ? "#191918" : "#f3f2ed")
-  }, [theme])
+    meta?.setAttribute("content", bgColor ?? (theme === "dark" ? "#191918" : "#f3f2ed"))
+  }, [theme, bgColor])
 }

@@ -12,18 +12,20 @@ import {
   Link2Off,
   Pin,
   Radical,
+  Sparkles,
   Strikethrough,
   Underline,
   type LucideIcon,
 } from "lucide-react"
 import { AnimatePresence, motion, useMotionValue, useSpring, useTransform, type HTMLMotionProps, type MotionValue } from "motion/react"
-import { createContext, useContext, useEffect, useRef, useState, type MouseEvent } from "react"
+import { createContext, Fragment, useContext, useEffect, useRef, useState, type MouseEvent } from "react"
 import { translate, useLanguage } from "@/app/i18n"
 import { useLiquidLens } from "@/components/ui/LiquidLens"
+import { AI_MENU, type AiCommand } from "@/features/ai/prompts"
 import { cn } from "@/lib/utils"
 import { COLOR_LABELS, NOTE_COLORS, type NoteColor } from "./colors"
 
-type Panel = "turn" | "color" | "link" | null
+type Panel = "turn" | "color" | "link" | "ai" | null
 
 const BLOCKS = [
   { id: "paragraph", label: "Текст" },
@@ -135,12 +137,14 @@ export function BubbleToolbar({
   linkRequest,
   onFormula,
   onPin,
+  onAi,
 }: {
   editor: Editor
 
   linkRequest: number
   onFormula: () => void
   onPin: (text: string) => void
+  onAi: (command: AiCommand) => void
 }) {
   useLanguage()
   const [panel, setPanel] = useState<Panel>(null)
@@ -291,6 +295,7 @@ export function BubbleToolbar({
                   </span>
                   <ChevronDown className="size-3 text-muted-foreground" />
                 </ToolbarButton>
+                <Btn icon={Sparkles} label={translate("Помощник")} active={panel === "ai"} onClick={() => toggle("ai")} />
                 <Sep />
                 <Btn
                   icon={Pin}
@@ -410,6 +415,34 @@ export function BubbleToolbar({
                     />
                   )}
                 </form>
+              )}
+
+              {panel === "ai" && (
+                <ul role="menu" aria-label={translate("Помощник")} className="w-56">
+                  <li className="px-2 py-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                    {translate("Помощник")}
+                  </li>
+                  {AI_MENU.map((action) => (
+                    <Fragment key={action.id}>
+                      {action.id === "rewrite" && <li aria-hidden className="my-1 h-px bg-border" />}
+                      <li>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onMouseDown={keep}
+                          onClick={() => {
+                            setPanel(null)
+                            onAi(action.id)
+                          }}
+                          className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] outline-none hover:bg-accent focus-visible:bg-accent"
+                        >
+                          {action.id === "summary" && <Sparkles className="size-3.5 shrink-0 text-highlight" />}
+                          {translate(action.label)}
+                        </button>
+                      </li>
+                    </Fragment>
+                  ))}
+                </ul>
               )}
             </motion.div>
           )}

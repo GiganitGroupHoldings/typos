@@ -230,17 +230,22 @@ export async function startServer(opts) {
   /** @param {string} real */
   const insideState = (real) => real === stateReal || real.startsWith(stateReal + path.sep)
 
-  let stateMtime = (await fs.stat(statePath(root))).mtimeMs
+  /** @param {import('node:fs').Stats} st */
+  const stateStamp = (st) => `${st.ino}:${st.size}:${st.mtimeMs}`
+  let stateKey = stateStamp(await fs.stat(statePath(root)))
   let stateChecked = 0
+  const reloadState = async () => {
+    const st = await statOrNull(statePath(root))
+    if (!st || stateStamp(st) === stateKey) return false
+    state = (await loadState(root)) ?? state
+    stateKey = stateStamp(st)
+    return true
+  }
   const currentState = async () => {
     const now = Date.now()
     if (now - stateChecked < 1000) return state
     stateChecked = now
-    const st = await statOrNull(statePath(root))
-    if (st && st.mtimeMs !== stateMtime) {
-      state = (await loadState(root)) ?? state
-      stateMtime = st.mtimeMs
-    }
+    await reloadState()
     return state
   }
 
@@ -321,9 +326,18 @@ export async function startServer(opts) {
     if (!token) return null
     const hash = Buffer.from(hashToken(token), "hex")
 
-    for (const d of (await currentState()).devices) {
-      if (timingSafeEqual(Buffer.from(hashToken(d.token), "hex"), hash)) return d
+    /** @param {Device[]} devices */
+    const matches = (devices) => {
+      for (const d of devices) {
+        if (timingSafeEqual(Buffer.from(hashToken(d.token), "hex"), hash)) return d
+      }
+      return null
     }
+
+    const found = matches((await currentState()).devices)
+    if (found) return found
+    // Ключ могли выдать только что: секундный кэш состояния не должен отклонять его как чужой.
+    if (await reloadState()) return matches(state.devices)
     return null
   }
 
@@ -744,7 +758,7 @@ export async function startServer(opts) {
   if (JSON.stringify(state.listen) !== JSON.stringify(listen)) {
     state = { ...state, listen }
     await writeJson(statePath(root), state)
-    stateMtime = (await fs.stat(statePath(root))).mtimeMs
+    stateKey = stateStamp(await fs.stat(statePath(root)))
   }
 
   return {

@@ -125,6 +125,14 @@ describe("сервер хранения", () => {
     expect((await call("/.typos/info", { headers: { Authorization: `Basic ${basic}` } })).status).toBe(200)
   })
 
+  it("принимает ключ, выданный после запуска, не дожидаясь обновления кэша", async () => {
+    await adapter().info()
+    const { token: fresh } = await rotateDevice(dir, "laptop")
+    const response = await fetch(`${base}/.typos/info`, { headers: { Authorization: `Bearer ${fresh}` } })
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ device: "laptop" })
+  })
+
   it("отозванный ключ перестаёт работать без перезапуска", async () => {
     expect(await revokeDevice(dir, "laptop")).toBe(true)
     await new Promise((r) => setTimeout(r, 1100))

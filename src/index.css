@@ -455,6 +455,45 @@
     color: var(--destructive);
   }
 
+  .note-prose .tiptap .ascii-block {
+    margin: 1em 0;
+  }
+
+  .note-prose .tiptap .ascii-block > pre {
+    max-height: 0;
+    padding-block: 0;
+    margin: 0;
+    opacity: 0;
+    overflow: hidden;
+  }
+  .note-prose .tiptap .ascii-block[data-editing] > pre {
+    max-height: none;
+    padding-block: 0.8em;
+    margin-top: 0.5em;
+    opacity: 1;
+    overflow-x: auto;
+  }
+  .note-prose .tiptap .ascii-view {
+    display: flex;
+    align-items: center;
+    justify-content: safe center;
+    overflow-x: auto;
+    padding: 1em;
+    border-radius: var(--radius);
+    background: var(--card);
+    box-shadow: var(--shadow-card);
+    cursor: pointer;
+  }
+  .note-prose .tiptap .ascii-view canvas {
+    display: block;
+    flex: none;
+  }
+  .note-prose .tiptap .ascii-error {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--destructive);
+  }
+
   .note-prose .tiptap .tableWrapper {
     overflow-x: auto;
     margin: 0 0 0.85em;
