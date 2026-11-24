@@ -1,0 +1,54 @@
+name: Windows installers
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+      - name: Set up Rust
+        run: rustup default stable-x86_64-pc-windows-msvc
+      - name: Install dependencies
+        run: npm ci
+      - name: Build Windows installers
+        shell: cmd
+        run: npm run desktop:build -- --target x86_64-pc-windows-msvc --bundles nsis,msi -- --locked
+      - uses: actions/upload-artifact@v7
+        with:
+          name: typos-windows-x64
+          path: |
+            src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*-setup.exe
+            src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
+          if-no-files-found: error
+          overwrite: true
+
+  release:
+    if: github.event_name == 'push'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: typos-windows-x64
+          path: installers
+      - name: Publish Windows installers
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes installers/nsis/*-setup.exe installers/msi/*.msi
