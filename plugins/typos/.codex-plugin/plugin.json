@@ -1,6 +1,6 @@
 {
   "name": "typos",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Учебные конспекты TYPOS на твоём сервере хранения.",
   "author": { "name": "robloxlover44" },
   "mcpServers": "./.mcp.json",

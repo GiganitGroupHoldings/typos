@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "typos",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Учебные конспекты TYPOS: предметы, заметки, формулы, проекты и доски в личном хранилище.",
   "author": { "name": "robloxlover44" },
   "repository": "https://github.com/robloxlover44/typos",
