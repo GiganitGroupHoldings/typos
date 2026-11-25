@@ -87,7 +87,7 @@ jobs:
         run: |
           bundle=src-tauri/target/universal-apple-darwin/release/bundle
           app="$bundle/macos/TYPOS.app"
-          lipo -verify_arch arm64 x86_64 "$app/Contents/MacOS/typos"
+          lipo "$app/Contents/MacOS/typos" -verify_arch arm64 x86_64
           codesign --verify --deep --strict "$app"
           hdiutil verify "$bundle"/dmg/*.dmg
       - uses: actions/upload-artifact@v7
