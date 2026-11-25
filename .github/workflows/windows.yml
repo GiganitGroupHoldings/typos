@@ -1,7 +1,17 @@
-name: Windows installers
+name: Desktop installers
 
 on:
   workflow_dispatch:
+    inputs:
+      platform:
+        description: Platform to build
+        type: choice
+        required: true
+        default: both
+        options:
+          - both
+          - windows
+          - macos
   push:
     tags:
       - "v*"
@@ -10,7 +20,9 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  windows:
+    name: Windows x64
+    if: github.event_name == 'push' || inputs.platform != 'macos'
     runs-on: windows-2025
     steps:
       - uses: actions/checkout@v7
@@ -36,9 +48,58 @@ jobs:
           if-no-files-found: error
           overwrite: true
 
+  macos:
+    name: macOS (Apple Silicon and Intel)
+    if: github.event_name == 'push' || inputs.platform != 'windows'
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+      - name: Set up Rust
+        run: |
+          rustup default stable
+          rustup target add aarch64-apple-darwin x86_64-apple-darwin
+      - name: Install dependencies
+        run: npm ci
+      - name: Build universal macOS installer
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [[ -z "$APPLE_CERTIFICATE" && -z "$APPLE_CERTIFICATE_PASSWORD" && -z "$APPLE_ID" && -z "$APPLE_PASSWORD" && -z "$APPLE_TEAM_ID" ]]; then
+            unset APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID
+            export APPLE_SIGNING_IDENTITY=-
+            echo "::notice::Building with an ad hoc signature. Gatekeeper may block the downloaded app."
+          elif [[ -z "$APPLE_CERTIFICATE" || -z "$APPLE_CERTIFICATE_PASSWORD" || -z "$APPLE_ID" || -z "$APPLE_PASSWORD" || -z "$APPLE_TEAM_ID" ]]; then
+            echo "::error::Configure all five Apple signing and notarization secrets."
+            exit 1
+          fi
+          npm run desktop:build -- --target universal-apple-darwin --bundles app,dmg -- --locked
+      - name: Verify macOS installer
+        run: |
+          bundle=src-tauri/target/universal-apple-darwin/release/bundle
+          app="$bundle/macos/TYPOS.app"
+          lipo -verify_arch arm64 x86_64 "$app/Contents/MacOS/typos"
+          codesign --verify --deep --strict "$app"
+          hdiutil verify "$bundle"/dmg/*.dmg
+      - uses: actions/upload-artifact@v7
+        with:
+          name: typos-macos-universal
+          path: src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+          if-no-files-found: error
+          overwrite: true
+
   release:
     if: github.event_name == 'push'
-    needs: build
+    needs: [windows, macos]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -47,8 +108,14 @@ jobs:
         with:
           name: typos-windows-x64
           path: installers
-      - name: Publish Windows installers
+      - uses: actions/download-artifact@v8
+        with:
+          name: typos-macos-universal
+          path: macos-installer
+      - name: Publish desktop installers
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-        run: gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes installers/nsis/*-setup.exe installers/msi/*.msi
+        run: >
+          gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes
+          installers/nsis/*-setup.exe installers/msi/*.msi macos-installer/*.dmg

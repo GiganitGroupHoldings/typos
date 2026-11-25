@@ -5,7 +5,7 @@
 # TYPOS
 
 We couldn't find cool, simple and good looking Apple-like notes for windows. So
-we made TYPOS - offline study notes for Windows and the browser. Notes are
+we made TYPOS - offline study notes for Windows, macOS, and the browser. Notes are
 Markdown files, organized by subject. Create folders, render your files(HTML,
 pics, pptx, pdf) and pin important things.
 
@@ -25,13 +25,32 @@ pics, pptx, pdf) and pin important things.
 - Offline editing and optional sync through a storage server.
 - Trash with 30-day recovery.
 
+## Download
+
+Get the desktop installer from [GitHub Releases](https://github.com/DrNonsense44/typos/releases).
+On Windows x64, run the `-setup.exe` or `.msi`. On a Mac with Apple Silicon or
+Intel, open the universal `.dmg` and drag TYPOS to Applications.
+
+To build a preview, open [Desktop installers](https://github.com/DrNonsense44/typos/actions/workflows/windows.yml)
+in GitHub Actions, select **Run workflow**, and choose `windows`, `macos`, or
+`both`. Download the installers from the run's **Artifacts**. Pushing a
+`v*` tag builds both platforms and publishes the installers to one release.
+
+To enable macOS signing and notarization, set these GitHub Actions secrets:
+`APPLE_CERTIFICATE` (base64-encoded Developer ID Application certificate and
+private key in a `.p12`), `APPLE_CERTIFICATE_PASSWORD`, `APPLE_ID`,
+`APPLE_PASSWORD` (app-specific password), and `APPLE_TEAM_ID`.
+With no signing secrets, the workflow uses an ad hoc signature and macOS may
+block the app at first launch.
+See [Tauri's macOS signing guide](https://v2.tauri.app/distribute/sign/macos/).
+
 ## Quick start
 
 Requires Node.js 22.12 or newer. Folder access in the browser requires Chrome or
 Edge.
 
 ```bash
-git clone https://github.com/robloxlover44/typos.git
+git clone https://github.com/DrNonsense44/typos.git
 cd typos
 npm ci
 npm run dev
