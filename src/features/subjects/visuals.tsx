@@ -45,6 +45,7 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import type { CSSProperties } from "react"
+import { validCustomColor } from "@/lib/subjectPalette"
 import { cn } from "@/lib/utils"
 import type { Subject, SubjectIcon, Tool, ToolIcon, ToolKind } from "@/types"
 
@@ -130,9 +131,9 @@ export const kindLabels: Record<ToolKind, string> = {
   other: "Файл",
 }
 
-export const subjectColor = (s: Pick<Subject, "color">) => `var(--subject-${s.color})`
+export const subjectColor = (s: Pick<Subject, "color" | "customColor">) => validCustomColor(s.customColor) ?? `var(--subject-${s.color})`
 
-export const subjectStyle = (s: Pick<Subject, "color">) => ({ "--subject": subjectColor(s) }) as CSSProperties
+export const subjectStyle = (s: Pick<Subject, "color" | "customColor">) => ({ "--subject": subjectColor(s) }) as CSSProperties
 
 export function SubjectBadge({ subject, size = "md", className }: { subject: Subject; size?: "sm" | "md" | "lg"; className?: string }) {
   const Icon = subjectIcons[subject.icon]

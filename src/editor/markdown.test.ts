@@ -6,6 +6,11 @@ const md = new MarkdownManager({ extensions: buildExtensions() })
 const roundTrip = (src: string) => md.serialize(md.parse(src))
 
 describe("markdown ↔ tiptap", () => {
+  it("сохраняет внутреннюю ссылку на подпапку", () => {
+    const source = "[Цена](/s/folder123)"
+    expect(roundTrip(source).trim()).toBe(source)
+    expect(md.parse(source).content?.[0].content?.[0].marks?.[0].attrs?.href).toBe("/s/folder123")
+  })
   it("сохраняет inline-формулы", () => {
     const src = "Матрица $A = (a_{ij})$ размера $m \\times n$."
     expect(roundTrip(src).trim()).toBe(src)

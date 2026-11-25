@@ -93,7 +93,9 @@ export function AiSettings() {
   return (
     <fieldset className="grid gap-3">
       <legend className="mb-2 font-medium">{translate("Подключение")}</legend>
-      <p className="text-sm text-muted-foreground">{translate("Переписывает, удлиняет и объясняет текст. Конспект за тебя не пишет.")}</p>
+      <p className="text-sm text-muted-foreground">
+        {translate("Проверяет и редактирует текст, объясняет конспекты и собирает по ним доски.")}
+      </p>
       <label className="grid gap-1 text-sm font-medium">
         {translate("Провайдер")}
         <select className={INPUT} value={provider} onChange={(event) => choose(event.currentTarget.value)}>

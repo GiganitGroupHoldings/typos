@@ -1,16 +1,17 @@
 import { Placeholder } from "@tiptap/extensions"
+import { closeHistory } from "@tiptap/pm/history"
+import type { Node as ProseMirrorNode } from "@tiptap/pm/model"
 import { TextSelection } from "@tiptap/pm/state"
 import { EditorContent, useEditor, type Editor } from "@tiptap/react"
-import { BookOpen, Check, Loader2, MoreHorizontal, PenLine, Trash2, Type } from "lucide-react"
+import { Check, FilePlus2, LayoutDashboard, Loader2, MoreHorizontal, Trash2, Type } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { useNavigate } from "react-router"
 import { toast } from "sonner"
 import { translate, useLanguage } from "@/app/i18n"
-import { useUi, type NoteFont } from "@/app/store"
+import { useUi } from "@/app/store"
 import { Button } from "@/components/ui/Button"
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuRadioGroup,
@@ -28,12 +29,18 @@ import { AiAssistant } from "@/features/ai/AiAssistant"
 import { CLOSED_ASSISTANT, type AssistantView } from "@/features/ai/assistantView"
 import { chat } from "@/features/ai/client"
 import { loadAiKey } from "@/features/ai/keyStore"
+import { boardSourceChunks, generateNoteBoard } from "@/features/ai/noteBoard"
 import { AI_TEXT_LIMIT, summaryRequest, textRequest, type AiAction, type AiCommand, type SummaryScope } from "@/features/ai/prompts"
 import { exportMarkdown } from "@/features/notes/exportMarkdown"
 import { ExportMarkdownButton } from "@/features/notes/ExportMarkdownButton"
+import { NoteFontsDialog } from "@/features/notes/NoteFontsDialog"
+import { noteHref, resolveNoteLink } from "@/features/notes/subnotes"
+import { useCustomNoteFonts } from "@/features/notes/useCustomNoteFonts"
 import { openPinEditor } from "@/features/pins/PinEditorDialog"
+import { folderHref, resolveFolderLink } from "@/features/subjects/folderLinks"
 import { errorText } from "@/lib/errors"
 import { relativeTime } from "@/lib/format"
+import { normalizeNoteFont, NOTE_FONTS } from "@/lib/noteFonts"
 import { noteScale, type NoteSize } from "@/lib/noteSize"
 import { toastUndo } from "@/lib/undo"
 import { cn } from "@/lib/utils"
@@ -42,10 +49,15 @@ import type { Note } from "@/types"
 import { sameBody } from "@/vault/format"
 import { mergeText } from "@/vault/mergeText"
 import { NoteConflictError, useVault, vaultFileUrl } from "@/vault/store"
+import { AiEditEffect, aiEditUndo, revealAiEdit, showAiPending } from "./aiEditEffect"
+import { findSourceBlock, noteBoardParts } from "./boardSource"
 import { BubbleToolbar } from "./BubbleToolbar"
 import { buildExtensions } from "./extensions"
 import { MathPopover, type MathEdit } from "./MathPopover"
 import { MobileEditorBar } from "./MobileEditorBar"
+import { NewSubnoteDialog } from "./NewSubnoteDialog"
+import { applyProofEdits, proofEdits, proofMessages, proofSegments, type ProofEdit } from "./proofread"
+import { ProofreadDialog } from "./ProofreadDialog"
 import { SideToolbar } from "./SideToolbar"
 import { TableMenu } from "./TableMenu"
 import { htmlMathToNodes, looksLikeMarkdown, normalizeMarkdownMath } from "./texImport"
@@ -59,12 +71,23 @@ const mounted = new Set<string>()
 
 const isBlank = (md: string) => md.replace(/^#{1,6}\s*$/gm, "").trim() === ""
 
-export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolean }) {
+export function NoteEditor({
+  note,
+  autoFocus,
+  sourceBlock,
+  sourceQuote,
+}: {
+  note: Note
+  autoFocus?: boolean
+  sourceBlock?: string | null
+  sourceQuote?: string | null
+}) {
   const font = useUi((s) => s.noteFont)
   const setNoteFont = useUi((s) => s.setNoteFont)
   const noteSize = useUi((s) => s.noteSize)
   const setNoteSize = useUi((s) => s.setNoteSize)
-  const toggleReading = useUi((s) => s.toggleReading)
+  const customFonts = useCustomNoteFonts()
+  const [fontsOpen, setFontsOpen] = useState(false)
   const navigate = useNavigate()
   const [saveState, setSaveState] = useState<SaveState>("saved")
   const [math, setMath] = useState<MathEdit | null>(null)
@@ -77,10 +100,16 @@ export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolea
   }, [note.path])
   const fileInput = useRef<HTMLInputElement>(null)
   const [linkRequest, setLinkRequest] = useState(0)
+  const [newSubnote, setNewSubnote] = useState(false)
   const formulaRef = useRef<() => void>(() => {})
   const [assistant, setAssistant] = useState<AssistantView>(CLOSED_ASSISTANT)
+  const [assistantContainer, setAssistantContainer] = useState<HTMLElement | null>(null)
+  const attachAssistant = useCallback((element: HTMLDivElement | null) => {
+    setAssistantContainer(element?.closest<HTMLElement>("#main") ?? null)
+  }, [])
   const assistantSeq = useRef(0)
-  const aiBusy = useRef(false)
+  const aiRequest = useRef<AbortController | null>(null)
+  const [proof, setProof] = useState<{ doc: ProseMirrorNode; edits: ProofEdit[] } | null>(null)
 
   const conflict = useRef(false)
   const saving = useRef(0)
@@ -224,6 +253,7 @@ export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolea
           node.type.name === "heading" && node.attrs.level === 1 ? translate("Заголовок") : translate("Текст конспекта"),
       }),
       Folding.configure({ noteId: note.id }),
+      AiEditEffect,
     ],
     [openMath, note.id],
   )
@@ -256,6 +286,37 @@ export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolea
         : { content: normalizeMarkdownMath(note.body), contentType: "markdown" as const }),
       autofocus: autoFocus ? "start" : false,
       editorProps: {
+        handleDOMEvents: {
+          click: (_view, event) => {
+            if (!(event.target instanceof Element) || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return false
+            const href = event.target.closest("a")?.getAttribute("href")
+            if (!href || !/^\/s\/[\w%-]+(?:\/n\/[\w%-]+)?$/.test(href)) return false
+            event.preventDefault()
+            const { notes, subjects } = useVault.getState()
+            const isNote = href.includes("/n/")
+            const exists = isNote ? notes.some((n) => noteHref(n) === href) : subjects.some((s) => folderHref(s.id) === href)
+            if (exists) void navigate(href)
+            else toast.error(translate(isNote ? "Конспект по этой ссылке не найден" : "Папка по этой ссылке не найдена"))
+            return true
+          },
+        },
+        handleTextInput: (view, from, to, text) => {
+          const at = view.state.doc.resolve(from)
+          if (text !== "]" || from !== to || at.parent.type.spec.code) return false
+          const before = at.parent.textBetween(0, at.parentOffset, "\n", "\n")
+          const match = /\[\[([^[\]\n]+)\]$/.exec(before)
+          if (!match) return false
+          const label = match[1].trim()
+          const { notes, subjects } = useVault.getState()
+          const linkedNote = resolveNoteLink(notes, note, label)
+          const folder = linkedNote ? undefined : resolveFolderLink(subjects, note.subjectId, label)
+          const href = linkedNote ? noteHref(linkedNote) : folder && folderHref(folder.id)
+          if (!href) return false
+          const { schema, tr } = view.state
+          const link = schema.marks.link.create({ href })
+          view.dispatch(tr.replaceWith(from - match[0].length, from, schema.text(label, [link])).removeStoredMark(link.type))
+          return true
+        },
         handleKeyDown: (view, event) => {
           const mod = event.ctrlKey || event.metaKey
           if (!mod || view.state.selection.empty) return false
@@ -310,6 +371,24 @@ export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolea
     editorRef.current = editor
   }, [editor])
 
+  useEffect(() => () => aiRequest.current?.abort(), [])
+
+  useEffect(() => {
+    if (!editor || sourceBlock == null || !sourceQuote || sourceQuote.length > 100 || !/^\d+$/.test(sourceBlock)) return
+    const position = findSourceBlock(editor.state.doc, Number(sourceBlock), sourceQuote)
+    if (position === undefined) {
+      toast(translate("Исходный фрагмент изменился. Открыт конспект."))
+      return
+    }
+    const node = editor.view.nodeDOM(position)
+    if (!(node instanceof HTMLElement)) return
+    const frame = requestAnimationFrame(() => {
+      node.scrollIntoView({ block: "center" })
+      node.animate([{ backgroundColor: "var(--accent)" }, { backgroundColor: "transparent" }], { duration: 2400 })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [editor, sourceBlock, sourceQuote])
+
   const openedBody = useRef(note.body)
   useEffect(() => useVault.getState().adoptNote(id, openedBody.current), [id])
 
@@ -321,11 +400,7 @@ export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolea
     toast(translate("Конспект обновлён"), { id: `reload-${id}` })
   }, [editor, id, note.body, loadFromDisk])
 
-  const reading = useUi((s) => s.readingMode)
   const mapMode = useUi((s) => s.mapMode)
-  useEffect(() => {
-    if (editor && !editor.isDestroyed) editor.setEditable(!reading, false)
-  }, [editor, reading])
 
   useEffect(() => {
     mounted.add(id)
@@ -423,45 +498,71 @@ export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolea
     openPinEditor({ subjectId: note.subjectId, tex: latex })
   }
 
-  const runAi = async (action: AiAction) => {
+  const aiUndoAction = (editor: Editor) => {
+    const undo = aiEditUndo(editor)
+    return {
+      label: translate("Отменить"),
+      onClick: () => {
+        if (!undo()) toast(translate("После правки текст изменился. Используй историю отмены редактора."))
+      },
+    }
+  }
+
+  const runAi = async (action: AiAction, scope: SummaryScope) => {
     const ed = editorRef.current
-    if (!ed || ed.isDestroyed || aiBusy.current) return
-    const { from, to } = ed.state.selection
-    const text = ed.state.doc.textBetween(from, to, "\n").trim()
-    if (!text) {
-      toast.error(translate("Выдели текст"))
+    if (!ed?.isEditable || ed.isDestroyed || aiRequest.current) return
+    const { doc, selection } = ed.state
+    const { from, to } = scope === "note" ? { from: 0, to: doc.content.size } : selection
+    const text = (scope === "note" ? ed.getMarkdown() : doc.textBetween(from, to, "\n")).trim()
+    if (isBlank(text)) {
+      toast.error(translate(scope === "note" ? "В конспекте пока нет текста." : "Выдели текст"))
       return
     }
     if (text.length > AI_TEXT_LIMIT) {
       toast.error(translate("Слишком много текста для помощника. Выдели фрагмент покороче."))
       return
     }
-    aiBusy.current = true
-    const toastId = toast.loading(translate("Помощник работает…"))
+    const controller = new AbortController()
+    aiRequest.current = controller
+    const clearPending = showAiPending(ed, { from, to })
+    const toastId = toast.loading(translate("Помощник работает…"), {
+      cancel: { label: translate("Отмена"), onClick: () => controller.abort() },
+    })
     try {
       const key = await loadAiKey().catch(() => null)
+      controller.signal.throwIfAborted()
       const { aiBaseUrl, aiModel } = useUi.getState()
-      const request = textRequest(action, text)
-      const result = await chat({ baseUrl: aiBaseUrl, model: aiModel }, key ?? "", request.messages, request)
-      if (ed.isDestroyed) {
+      const request = textRequest(action, text, scope)
+      const result = await chat({ baseUrl: aiBaseUrl, model: aiModel }, key ?? "", request.messages, {
+        ...request,
+        signal: controller.signal,
+        rejectTruncated: scope === "note",
+      })
+      if (controller.signal.aborted || ed.isDestroyed) {
         toast.dismiss(toastId)
         return
       }
-      // Пока модель отвечала, выделение могли изменить: старые позиции уже не те.
-      if (ed.state.doc.textBetween(from, to, "\n").trim() !== text) {
-        toast.error(translate("Текст изменился, пока помощник думал. Попробуй ещё раз."), { id: toastId })
-        return
-      }
-      ed.chain().focus().deleteRange({ from, to }).insertContent(result, { contentType: "markdown" }).run()
-      toast.success(translate("Готово"), {
-        id: toastId,
-        action: { label: translate("Отменить"), onClick: () => ed.commands.undo() },
+      if (!ed.isEditable || !ed.state.doc.eq(doc)) throw new Error(translate("Текст изменился, пока помощник думал. Попробуй ещё раз."))
+      const edit = ed.chain().command(({ tr }) => {
+        closeHistory(tr)
+        return true
       })
+      if (scope === "note") edit.setContent(normalizeMarkdownMath(result), { contentType: "markdown" })
+      else edit.insertContentAt({ from, to }, result, { contentType: "markdown" })
+      const changed = edit
+        .command(({ tr }) => {
+          revealAiEdit(tr)
+          return tr.docChanged
+        })
+        .run()
+      if (!changed) throw new Error(translate("Не удалось вставить ответ помощника. Попробуй ещё раз."))
+      toast.success(translate("Готово"), { id: toastId, action: aiUndoAction(ed) })
     } catch (e) {
-      if (ed.isDestroyed) toast.dismiss(toastId)
+      if (controller.signal.aborted || ed.isDestroyed) toast.dismiss(toastId)
       else toast.error(translate("Помощник не справился"), { id: toastId, description: errorText(e) })
     } finally {
-      aiBusy.current = false
+      clearPending()
+      aiRequest.current = null
     }
   }
 
@@ -504,15 +605,100 @@ export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolea
     }
   }
 
-  const openAssistant = () => {
+  const runProofread = async (scope: SummaryScope) => {
     const ed = editorRef.current
-    const selected = ed && !ed.isDestroyed ? ed.state.doc.textBetween(ed.state.selection.from, ed.state.selection.to, "\n").trim() : ""
-    void runSummary(selected ? "selection" : "note")
+    if (!ed?.isEditable || ed.isDestroyed || aiRequest.current) return
+    const { doc, selection } = ed.state
+    const range = scope === "note" ? { from: 0, to: doc.content.size } : selection
+    const segments = proofSegments(doc, range.from, range.to)
+    if (!segments.length) return void toast.error(translate(scope === "note" ? "В конспекте пока нет текста." : "Выдели текст"))
+    if (segments.length > 150 || segments.reduce((size, segment) => size + segment.text.length, 0) > AI_TEXT_LIMIT)
+      return void toast.error(translate("Слишком много текста для помощника. Выдели фрагмент покороче."))
+    const controller = new AbortController()
+    aiRequest.current = controller
+    const clearPending = showAiPending(ed, range)
+    const toastId = toast.loading(translate("Проверяю ошибки…"), {
+      cancel: { label: translate("Отмена"), onClick: () => controller.abort() },
+    })
+    try {
+      const key = await loadAiKey().catch(() => null)
+      controller.signal.throwIfAborted()
+      const { aiBaseUrl, aiModel } = useUi.getState()
+      const answer = await chat({ baseUrl: aiBaseUrl, model: aiModel }, key ?? "", proofMessages(segments), {
+        maxTokens: 3200,
+        temperature: 0.1,
+        signal: controller.signal,
+      })
+      if (controller.signal.aborted || ed.isDestroyed) return
+      if (!ed.state.doc.eq(doc)) throw new Error(translate("Текст изменился, пока помощник думал. Попробуй ещё раз."))
+      const edits = proofEdits(answer, segments)
+      if (edits.length) setProof({ doc, edits })
+      else toast.success(translate("Помощник не нашёл ошибок."))
+    } catch (e) {
+      if (!controller.signal.aborted) toast.error(errorText(e))
+    } finally {
+      clearPending()
+      toast.dismiss(toastId)
+      aiRequest.current = null
+    }
   }
 
-  const runAiCommand = (command: AiCommand) => {
-    if (command === "summary") void runSummary("selection")
-    else void runAi(command)
+  const applyProof = (edits: ProofEdit[]) => {
+    const ed = editorRef.current
+    setProof(null)
+    if (!ed?.isEditable || ed.isDestroyed || !proof || !ed.state.doc.eq(proof.doc))
+      return void toast.error(translate("Текст изменился, пока помощник думал. Попробуй ещё раз."))
+    ed.view.dispatch(revealAiEdit(applyProofEdits(ed.state.tr, edits)))
+    toast.success(translate("Исправления применены"), { action: aiUndoAction(ed) })
+  }
+
+  const runNoteBoard = async (scope: SummaryScope) => {
+    const ed = editorRef.current
+    if (!ed || ed.isDestroyed || aiRequest.current) return
+    const { doc, selection } = ed.state
+    const adapter = useVault.getState().adapter
+    const controller = new AbortController()
+    aiRequest.current = controller
+    const cancel = { label: translate("Отмена"), onClick: () => controller.abort() }
+    const toastId = toast.loading(translate("Собираю доску…"), { cancel })
+    try {
+      const parts = scope === "selection" ? noteBoardParts(doc, selection.from, selection.to) : noteBoardParts(doc)
+      if (!parts.length) throw new Error(translate("Для доски нужно хотя бы две связанные мысли. Добавь их в конспект."))
+      const chunks = boardSourceChunks(parts)
+      flush()
+      const title = doc.firstChild?.type.name === "heading" ? doc.firstChild.textContent.trim() || note.title : note.title
+      const key = await loadAiKey().catch(() => null)
+      const { aiBaseUrl, aiModel } = useUi.getState()
+      const { data, fallback } = await generateNoteBoard(
+        { baseUrl: aiBaseUrl, model: aiModel },
+        key ?? "",
+        title,
+        chunks,
+        { subjectId: note.subjectId, noteId: id },
+        (message) => toast.loading(message, { id: toastId, cancel }),
+        controller.signal,
+      )
+      if (controller.signal.aborted || ed.isDestroyed || useVault.getState().adapter !== adapter) return
+      if (!ed.state.doc.eq(doc)) throw new Error(translate("Текст изменился, пока помощник думал. Попробуй ещё раз."))
+      toast.loading(translate("Сохраняю доску…"), { id: toastId, cancel: undefined })
+      const board = await useVault.getState().createBoard(note.subjectId, title.slice(0, 100), data)
+      if (controller.signal.aborted || ed.isDestroyed || useVault.getState().adapter !== adapter) return
+      if (fallback) toast.warning(translate("Модель не собрала схему. Доска создана из фрагментов конспекта."))
+      else toast.success(translate("Доска создана"))
+      navigate(`/s/${note.subjectId}/b/${board.id}`)
+    } catch (e) {
+      if (!controller.signal.aborted) toast.error(translate("Не удалось создать доску"), { description: errorText(e) })
+    } finally {
+      toast.dismiss(toastId)
+      aiRequest.current = null
+    }
+  }
+
+  const runAiCommand = (command: AiCommand, scope: SummaryScope = "selection") => {
+    if (command === "summary") void runSummary(scope)
+    else if (command === "proofread") void runProofread(scope)
+    else if (command === "board") void runNoteBoard(scope)
+    else void runAi(command, scope)
   }
 
   const currentMarkdown = () => {
@@ -520,11 +706,21 @@ export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolea
     return ed && !ed.isDestroyed ? ed.getMarkdown() : note.body
   }
 
+  const createSubnote = async (name: string) => {
+    const ed = editorRef.current
+    if (!ed || ed.isDestroyed) throw new Error(translate("Открой конспект и попробуй ещё раз"))
+    const child = await useVault.getState().createNote(note.subjectId, `# ${name}`, note.id)
+    if (ed.isDestroyed) return
+    ed.commands.insertContentAt(ed.state.doc.content.size, {
+      type: "paragraph",
+      content: [{ type: "text", text: name, marks: [{ type: "link", attrs: { href: noteHref(child) } }] }],
+    })
+  }
+
   return (
-    <div className="flex min-h-full flex-col">
+    <div ref={attachAssistant} className="flex min-h-full flex-col">
       <SideToolbar
         editor={editor}
-        hidden={reading}
         onFormula={formulaFromSelection}
         onBlockFormula={() => editor && openMath(editor.state.selection.from, "block", "new")}
         onImage={() => fileInput.current?.click()}
@@ -532,8 +728,7 @@ export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolea
       {editor && (
         <MobileEditorBar
           editor={editor}
-          reading={reading}
-          onReading={toggleReading}
+          onFonts={() => setFontsOpen(true)}
           onFormula={formulaFromSelection}
           onBlockFormula={() => openMath(editor.state.selection.from, "block", "new")}
           onImage={() => fileInput.current?.click()}
@@ -543,6 +738,8 @@ export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolea
             if (text) pinSelection(text)
           }}
           onExport={() => exportMarkdown(note, currentMarkdown())}
+          onCreateBoard={() => void runNoteBoard("note")}
+          onCreateSubnote={() => setNewSubnote(true)}
           onDelete={remove}
           saveState={saveState}
           noteSize={noteSize}
@@ -575,13 +772,7 @@ export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolea
           />
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          {reading ? (
-            <Button variant="ghost" size="sm" onClick={toggleReading}>
-              <PenLine /> {translate("Редактировать")}
-            </Button>
-          ) : (
-            <SaveIndicator state={saveState} />
-          )}
+          <SaveIndicator state={saveState} />
           <ExportMarkdownButton note={note} getMarkdown={currentMarkdown} />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -590,19 +781,31 @@ export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolea
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuCheckboxItem checked={reading} onCheckedChange={toggleReading}>
-                <BookOpen /> {translate("Режим чтения")}
-              </DropdownMenuCheckboxItem>
+              <DropdownMenuItem onSelect={() => setNewSubnote(true)}>
+                <FilePlus2 /> {translate("Новый дочерний конспект")}
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => void runNoteBoard("note")}>
+                <LayoutDashboard /> {translate("Создать доску по конспекту")}
+              </DropdownMenuItem>
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>
                   <Type /> {translate("Шрифт текста")}
                 </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent>
-                  <DropdownMenuRadioGroup value={font} onValueChange={(v) => setNoteFont(v as NoteFont)}>
-                    <DropdownMenuRadioItem value="inter">Inter</DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="golos">Golos</DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="serif">PT Serif</DropdownMenuRadioItem>
+                <DropdownMenuSubContent className="min-w-48">
+                  <DropdownMenuRadioGroup value={font} onValueChange={(value) => setNoteFont(normalizeNoteFont(value))}>
+                    {Object.entries(NOTE_FONTS).map(([id, { name, family }]) => (
+                      <DropdownMenuRadioItem key={id} value={id} style={{ fontFamily: family }}>
+                        {name}
+                      </DropdownMenuRadioItem>
+                    ))}
+                    {customFonts.fonts.map(({ id, name }) => (
+                      <DropdownMenuRadioItem key={id} value={id}>
+                        <span className="max-w-48 truncate">{name}</span>
+                      </DropdownMenuRadioItem>
+                    ))}
                   </DropdownMenuRadioGroup>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={() => setFontsOpen(true)}>{translate("Управление шрифтами…")}</DropdownMenuItem>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
               <DropdownMenuSub>
@@ -627,12 +830,9 @@ export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolea
       </div>
 
       <div
-        className={cn(
-          "note-prose mx-auto w-full pt-6 pb-44 pr-[max(1rem,var(--safe-right))] pl-[max(1rem,var(--safe-left))] transition-colors duration-(--dur-slow) md:pt-8 md:pr-20 md:pb-32 md:pl-6 lg:px-6",
-          reading && "note-reading",
-        )}
-        data-font={reading ? "serif" : font}
-        style={{ "--note-scale": noteScale(noteSize) } as CSSProperties}
+        className="note-prose mx-auto w-full pt-6 pb-44 pr-[max(1rem,var(--safe-right))] pl-[max(1rem,var(--safe-left))] transition-colors duration-(--dur-slow) md:pt-8 md:pr-20 md:pb-32 md:pl-6 lg:px-6"
+        data-font={font}
+        style={{ "--note-scale": noteScale(noteSize), "--note-font": customFonts.family } as CSSProperties}
       >
         <p className="mb-5 text-center text-[13px] text-muted-foreground">
           {note.created === note.updated ? translate("Новый конспект") : translate("Изменено {0}", relativeTime(note.updated))}
@@ -640,14 +840,23 @@ export function NoteEditor({ note, autoFocus }: { note: Note; autoFocus?: boolea
 
         <div className="relative">
           <EditorContent editor={editor} />
-          {editor && <BlockHandle editor={editor} disabled={reading || mapMode} />}
-          {editor && <NoteCanvas key={note.id} editor={editor} noteId={note.id} readOnly={reading} />}
+          {editor && <BlockHandle editor={editor} disabled={mapMode} />}
+          {editor && <NoteCanvas key={note.id} editor={editor} noteId={note.id} />}
         </div>
       </div>
 
       <MathPopover edit={math} onSave={saveMath} onDelete={deleteMath} onCancel={cancelMath} onPin={pinMath} />
+      {newSubnote && <NewSubnoteDialog onClose={() => setNewSubnote(false)} onCreate={createSubnote} />}
+      {fontsOpen && <NoteFontsDialog custom={customFonts} onClose={() => setFontsOpen(false)} />}
+      {proof && <ProofreadDialog edits={proof.edits} onClose={() => setProof(null)} onApply={applyProof} />}
       {editor && (
-        <AiAssistant view={assistant} onOpen={openAssistant} onClose={closeAssistant} onRetry={() => void runSummary(assistant.scope)} />
+        <AiAssistant
+          container={assistantContainer}
+          view={assistant}
+          onTool={(command) => runAiCommand(command, "note")}
+          onClose={closeAssistant}
+          onRetry={() => void runSummary(assistant.scope)}
+        />
       )}
     </div>
   )

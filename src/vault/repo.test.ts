@@ -1,10 +1,36 @@
 import { describe, expect, it } from "vitest"
+import { noteBranches, noteHref, resolveNoteLink } from "@/features/notes/subnotes"
 import { buildDocs, createIndex } from "@/features/search/searchIndex"
+import { folderHref, resolveFolderLink } from "@/features/subjects/folderLinks"
 import { createMemoryAdapter } from "@/storage/flatAdapter"
 import { sampleVault } from "@/test/sampleVault"
 import * as repo from "./repo"
 
 describe("vault repo", () => {
+  it("субконспект хранится с родителем и остаётся доступным, пока родитель в корзине", async () => {
+    const a = createMemoryAdapter()
+    const subject = await repo.createSubject(a, { name: "Запас", color: "orange", icon: "book" }, 0)
+    const overview = await repo.createNote(a, subject, "# Обзор")
+    const child = await repo.createNote(a, subject, "# Цена", overview.id)
+    const other = await repo.createNote(a, subject, "# Цена")
+    const body = `# Обзор\n\n[Цена](${noteHref(child)})`
+    await repo.saveNote(a, overview, body)
+    const { notes } = await repo.loadVault(a)
+    expect(noteBranches(notes).roots.map((n) => n.id)).toEqual(expect.arrayContaining([overview.id, other.id]))
+    expect(
+      noteBranches(notes)
+        .parents.get(overview.id)
+        ?.map((n) => n.id),
+    ).toEqual([child.id])
+    expect(resolveNoteLink(notes, overview, "цена")?.id).toBe(child.id)
+    expect(notes.find((n) => n.id === overview.id)?.body).toBe(body)
+
+    await repo.trashNote(a, overview)
+    const [trash] = await repo.listTrash(a)
+    expect(noteBranches((await repo.loadVault(a)).notes).roots.some((n) => n.id === child.id)).toBe(true)
+    await repo.restoreFromTrash(a, trash.trashPath, trash.originalPath)
+    expect(noteBranches((await repo.loadVault(a)).notes).parents.get(overview.id)?.[0].id).toBe(child.id)
+  })
   it("load: предметы, конспекты, закреп, тулзы", async () => {
     const a = sampleVault()
     const v = await repo.loadVault(a)
@@ -39,6 +65,22 @@ describe("vault repo", () => {
     const n2 = await repo.saveNote(a, await repo.createNote(a, subjects[3]), "# Лекция")
     expect(n1.path).not.toBe(n2.path)
     expect(n2.path).toBe("История/Конспекты/Лекция (2).md")
+  })
+
+  it("новое имя конспекта переживает сохранение, сохраняя текст, путь и родителя", async () => {
+    const a = sampleVault()
+    const { subjects } = await repo.loadVault(a)
+    const note = await repo.createNote(a, subjects[0], "# Старый заголовок\n\nТекст", "parent-id")
+    const title = '"Новое имя: план"'
+    const renamed = await repo.renameNote(a, note, title)
+    expect(renamed).toMatchObject({ id: note.id, path: note.path, body: note.body, title, meta: { parentNoteId: "parent-id" } })
+    const updated = await repo.saveNote(a, renamed, `${note.body}\n\nДополнение`)
+    expect((await repo.loadVault(a)).notes.find((n) => n.id === note.id)).toMatchObject({
+      path: note.path,
+      title,
+      body: updated.body,
+      meta: { parentNoteId: "parent-id" },
+    })
   })
 
   it("корзина и восстановление", async () => {
@@ -84,6 +126,34 @@ describe("vault repo", () => {
       ["Мат анализ 1 курс", "blue"],
       ["Мат анализ 1 курс (2)", "rose"],
     ])
+  })
+
+  it("вложенные папки, пустые ветки и ссылки переживают переименование родителя и восстановление из корзины", async () => {
+    const a = createMemoryAdapter()
+    const input = { name: "Запас", color: "orange", icon: "book", customColor: "#ff6500" } as const
+    const root = await repo.createSubject(a, input, 0)
+    const section = await repo.createSubject(a, { ...input, name: "7P", customColor: undefined }, 0, root)
+    const empty = await repo.createSubject(a, { ...input, name: "Цена" }, 0, section)
+    const second = await repo.createSubject(a, { ...input, name: "Другой проект" }, 1)
+    await repo.createSubject(a, { ...input, name: "Цена" }, 0, second)
+    const body = `# Обзор\n\n[Цена](${folderHref(empty.id)})`
+    const note = await repo.createNote(a, section, body)
+
+    const renamed = await repo.updateSubject(a, root, { ...input, name: "ЗАПАС 2" })
+    const loaded = await repo.loadVault(a)
+    expect(await repo.countNotes(a)).toBe(1)
+    expect(loaded.subjects.find((s) => s.id === root.id)?.customColor).toBe("#ff6500")
+    expect(loaded.subjects.find((s) => s.id === section.id)?.parentId).toBe(root.id)
+    expect(resolveFolderLink(loaded.subjects, section.id, "цена")?.id).toBe(empty.id)
+    expect(resolveFolderLink(loaded.subjects, second.id, "ЗАПАС 2 / 7P / Цена")?.id).toBe(empty.id)
+    expect(loaded.notes.find((n) => n.id === note.id)).toMatchObject({ subjectId: section.id, body })
+    expect(loaded.notes.some((n) => n.subjectId === empty.id)).toBe(false)
+
+    await repo.trashEntry(a, renamed.dir)
+    const [item] = await repo.listTrash(a)
+    expect((await repo.loadVault(a)).subjects.some((s) => s.id === empty.id)).toBe(false)
+    await repo.restoreFromTrash(a, item.trashPath, item.originalPath)
+    expect((await repo.loadVault(a)).subjects.find((s) => s.id === empty.id)?.parentId).toBe(section.id)
   })
 
   it("картинка сохраняется рядом с конспектом", async () => {

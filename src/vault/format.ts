@@ -23,6 +23,7 @@ const KINDS: [RegExp, ToolKind][] = [
 
 export const fileKind = (ext: string): ToolKind => KINDS.find(([re]) => re.test(ext.toLowerCase()))?.[1] ?? "other"
 export const SUBJECT_META = "_subject.json"
+export const SUBFOLDERS_DIR = ".folders"
 export const SYSTEM_DIR = ".studynotes"
 export const TRASH_DIR = `${SYSTEM_DIR}/trash`
 
@@ -44,7 +45,21 @@ export function parseFrontmatter(text: string): Parsed {
   const meta: Record<string, string> = {}
   for (const line of src.slice(4, end).split("\n")) {
     const m = line.match(/^([\w-]+):\s*(.*)$/)
-    if (m) meta[m[1]] = m[2].trim().replace(/^(['"])(.*)\1$/, "$2")
+    if (!m) continue
+    const [, key, raw] = m
+    const value = raw.trim()
+    if (key === "noteTitle" && value.startsWith('"') && value.endsWith('"')) {
+      try {
+        const title: unknown = JSON.parse(value)
+        if (typeof title === "string") {
+          meta[key] = title
+          continue
+        }
+      } catch {
+        // Ручные правки файла могут использовать обычные кавычки.
+      }
+    }
+    meta[key] = value.replace(/^(['"])(.*)\1$/, "$2")
   }
   const after = src.slice(end + 4)
   return { meta, body: after.replace(/^[^\n]*\n/, "").replace(/^\n/, "") }
@@ -53,7 +68,7 @@ export function parseFrontmatter(text: string): Parsed {
 export function serializeFrontmatter(meta: Record<string, string>, body: string): string {
   const order = ["id", "created", "updated", "order"]
   const keys = [...order.filter((k) => k in meta), ...Object.keys(meta).filter((k) => !order.includes(k))]
-  const head = keys.map((k) => `${k}: ${meta[k]}`).join("\n")
+  const head = keys.map((k) => `${k}: ${k === "noteTitle" ? JSON.stringify(meta[k]) : meta[k]}`).join("\n")
   return `---\n${head}\n---\n\n${body.replace(/^\n+/, "")}`
 }
 

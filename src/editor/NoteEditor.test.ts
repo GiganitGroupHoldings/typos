@@ -32,7 +32,6 @@ beforeEach(async () => {
   note.body = "# Формулы\n\n\\(x^2\\)\n\n\nБез правок"
   await adapter.writeText(note.path, serializeFrontmatter({ id: note.id, created: note.created, updated: note.updated }, note.body))
   useVault.setState({ ...data, adapter, status: "ready" })
-  useUi.setState({ readingMode: false })
   host = document.createElement("div")
   document.body.append(host)
   root = createRoot(host)
@@ -128,7 +127,7 @@ it("не теряет ввод во время медленного сохран
   expect(await repo.readNoteBody(adapter, saved.path)).toBe(editor.getMarkdown())
 })
 
-it("открытие, выделение и режим чтения не меняют файл или дату конспекта", async () => {
+it("открытие и выделение не меняют файл или дату конспекта", async () => {
   const note = useVault.getState().notes[0]
   const original = await adapter.readText(note.path)
   const write = vi.spyOn(adapter, "writeText")
@@ -136,10 +135,8 @@ it("открытие, выделение и режим чтения не мен�
   expect(host.textContent).toContain("Без правок")
   await act(async () => {
     editor.commands.setTextSelection(3)
-    useUi.getState().toggleReading()
   })
   await act(async () => vi.advanceTimersByTimeAsync(600))
-  await act(async () => useUi.getState().toggleReading())
   await act(async () => vi.advanceTimersByTimeAsync(600))
   await act(async () => root.unmount())
   expect(write).not.toHaveBeenCalled()

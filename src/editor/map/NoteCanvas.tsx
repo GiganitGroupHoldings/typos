@@ -73,7 +73,7 @@ function markEdited(map: NoteMap, nodeIds: string[]): NoteMap {
   return { ...map, groups: map.groups.map((g) => (groups.has(g.id) && g.anchor.kind === "mermaid" ? { ...g, edited: true } : g)) }
 }
 
-export function NoteCanvas({ editor, noteId, readOnly }: { editor: Editor; noteId: string; readOnly?: boolean }) {
+export function NoteCanvas({ editor, noteId }: { editor: Editor; noteId: string }) {
   useLanguage()
   const layer = useRef<HTMLDivElement>(null)
   const [map, setMapState] = useState<NoteMap | null>(null)
@@ -95,7 +95,7 @@ export function NoteCanvas({ editor, noteId, readOnly }: { editor: Editor; noteI
   const dragRef = useRef<Drag | null>(null)
   const storeMode = useUi((s) => s.mapMode)
   const setMapMode = useUi((s) => s.setMapMode)
-  const mode = storeMode && !readOnly
+  const mode = storeMode
 
   const setDrag = (d: Drag | null) => {
     dragRef.current = d

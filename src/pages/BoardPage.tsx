@@ -29,7 +29,7 @@ export function BoardPage() {
         <BoardTitle key={`${board.id}:${board.name}`} board={board} />
         <BoardActions board={board} />
       </div>
-      <div className="min-h-0 flex-1 overflow-hidden rounded-2xl border bg-background shadow-card">
+      <div className="min-h-0 flex-1 overflow-hidden rounded-2xl border bg-(--app-bg) shadow-card">
         <BoardCanvas key={board.id} board={board} />
       </div>
     </motion.div>

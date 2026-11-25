@@ -39,13 +39,24 @@ const sections: { tab: SubjectTab; label: string; icon: typeof FileText }[] = [
   { tab: "boards", label: "Доски", icon: LayoutDashboard },
 ]
 
-function SubjectNode({ subject }: { subject: Subject }) {
+function SubjectNode({
+  subject,
+  childrenByParent,
+  activeFolders,
+}: {
+  subject: Subject
+  childrenByParent: Map<string, Subject[]>
+  activeFolders: Set<string>
+}) {
   useLanguage()
   const { subjectId } = useParams()
   const [params] = useSearchParams()
   const { pathname } = useLocation()
   const active = subjectId === subject.id
-  const [open, setOpen] = useState(active)
+  const [override, setOverride] = useState<{ subjectId?: string; open: boolean }>()
+  const open = override?.open || (activeFolders.has(subject.id) && override?.subjectId !== subjectId)
+  const setOpen = (value: boolean) => setOverride({ subjectId, open: value })
+  const children = childrenByParent.get(subject.id) ?? []
   const counts: Record<SubjectTab, number> = {
     notes: useNotesOf(subject.id).length,
     pins: usePinsOf(subject.id).length,
@@ -58,7 +69,7 @@ function SubjectNode({ subject }: { subject: Subject }) {
     <motion.li layout="position" transition={spring} className="relative list-none">
       <div className="group/row flex items-center">
         <SidebarMenuButton asChild isActive={active && pathname === `/s/${subject.id}`} className="pr-12">
-          <Link to={`/s/${subject.id}`} onClick={() => setOpen(true)}>
+          <Link to={`/s/${subject.id}`} title={subject.name} onClick={() => setOpen(true)}>
             <SubjectBadge subject={subject} size="sm" />
             <span className="font-medium">{subject.name}</span>
           </Link>
@@ -67,7 +78,7 @@ function SubjectNode({ subject }: { subject: Subject }) {
           type="button"
           aria-label={open ? translate("Свернуть «{0}»", subject.name) : translate("Развернуть «{0}»", subject.name)}
           aria-expanded={open}
-          onClick={() => setOpen((v) => !v)}
+          onClick={() => setOpen(!open)}
           className="absolute top-0 right-0 flex size-11 items-center justify-center rounded-lg text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:outline-none"
         >
           <motion.span animate={{ rotate: open ? 90 : 0 }} transition={spring} className="flex">
@@ -90,7 +101,7 @@ function SubjectNode({ subject }: { subject: Subject }) {
               const Icon = s.icon
               return (
                 <li key={s.tab} className="relative" style={{ height: ROW }}>
-                  <TraceLine index={i} last={i === sections.length - 1} />
+                  <TraceLine index={i} last={i === sections.length - 1 && children.length === 0} />
                   <Link
                     to={`/s/${subject.id}?tab=${s.tab}`}
                     data-active={isCurrent || undefined}
@@ -107,6 +118,17 @@ function SubjectNode({ subject }: { subject: Subject }) {
                 </li>
               )
             })}
+            {children.map((child, index) => (
+              <li key={child.id} className="relative pl-8">
+                <TraceLine index={sections.length + index} last={index === children.length - 1} />
+                {index < children.length - 1 && (
+                  <span aria-hidden className="absolute top-11 bottom-0 left-[19px] w-px bg-sidebar-foreground/35" />
+                )}
+                <ul>
+                  <SubjectNode subject={child} childrenByParent={childrenByParent} activeFolders={activeFolders} />
+                </ul>
+              </li>
+            ))}
           </motion.ul>
         )}
       </AnimatePresence>
@@ -116,12 +138,25 @@ function SubjectNode({ subject }: { subject: Subject }) {
 
 export function SubjectTree() {
   const subjects = useSubjects()
+  const { subjectId } = useParams()
+  const byId = new Map(subjects.map((s) => [s.id, s]))
+  const childrenByParent = new Map<string, Subject[]>()
+  const activeFolders = new Set<string>()
+  for (const subject of subjects) {
+    if (!subject.parentId) continue
+    const children = childrenByParent.get(subject.parentId) ?? []
+    children.push(subject)
+    childrenByParent.set(subject.parentId, children)
+  }
+  for (let folder = subjectId; folder && !activeFolders.has(folder); folder = byId.get(folder)?.parentId) activeFolders.add(folder)
   return (
     <LayoutGroup>
       <SidebarMenu className="gap-0.5">
-        {subjects.map((s) => (
-          <SubjectNode key={s.id} subject={s} />
-        ))}
+        {subjects
+          .filter((s) => !s.parentId)
+          .map((s) => (
+            <SubjectNode key={s.id} subject={s} childrenByParent={childrenByParent} activeFolders={activeFolders} />
+          ))}
       </SidebarMenu>
     </LayoutGroup>
   )

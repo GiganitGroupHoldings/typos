@@ -26,6 +26,19 @@ describe("файл доски", () => {
     }
   })
 
+  it("сохраняет ярлык на файл проекта и отбрасывает опасный id", () => {
+    const tool = { subjectId: "s1", toolId: "t1" }
+    const data: BoardData = {
+      nodes: [{ id: "l", type: "link", x: 0, y: 0, width: 160, height: 96, label: "Схема.pdf", tool }],
+      edges: [],
+    }
+    const parsed = parseBoard(serializeBoard("b", data)).data
+    expect(parsed.nodes[0].tool).toEqual(tool)
+
+    const bad = parseBoard(JSON.stringify({ nodes: [{ id: "x", type: "link", tool: { subjectId: "../s", toolId: "t" } }] })).data
+    expect(bad.nodes[0].tool).toBeUndefined()
+  })
+
   it("читает доску из Obsidian (JSON Canvas) и пишет её обратно с id", () => {
     const obsidian = JSON.stringify({
       nodes: [

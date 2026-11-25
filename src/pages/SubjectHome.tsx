@@ -10,6 +10,7 @@ import { BoardPreview } from "@/features/boards/BoardPreview"
 import { pickAndImportNotes } from "@/features/import/importFiles"
 import { useFileDrop } from "@/features/import/useFileDrop"
 import { ExportMarkdownButton } from "@/features/notes/ExportMarkdownButton"
+import { NoteTree } from "@/features/notes/NoteTree"
 import { PinBody } from "@/features/pins/PinCard"
 import { openPinEditor } from "@/features/pins/PinEditorDialog"
 import { SubjectActions } from "@/features/subjects/SubjectActions"
@@ -29,6 +30,7 @@ export function SubjectHome() {
   const { subjectId } = useParams()
   const [params] = useSearchParams()
   const subject = useSubject(subjectId)
+  const parent = useSubject(subject?.parentId)
   const notes = useNotesOf(subjectId)
   const pins = usePinsOf(subjectId)
   const tools = useToolsOf(subjectId)
@@ -52,6 +54,11 @@ export function SubjectHome() {
       <header className="flex flex-wrap items-center gap-3 md:gap-4">
         <SubjectBadge subject={subject} size="lg" />
         <div className="min-w-0 flex-1">
+          {parent && (
+            <Link to={`/s/${parent.id}`} className="block w-fit max-w-full truncate text-sm text-muted-foreground hover:underline">
+              {parent.name}
+            </Link>
+          )}
           <h1 className="truncate text-[26px] leading-tight font-bold tracking-tight md:text-[32px]">{subject.name}</h1>
           <p className="text-[15px] text-muted-foreground">{plural(notes.length, ["конспект", "конспекта", "конспектов"])}</p>
         </div>
@@ -76,22 +83,25 @@ export function SubjectHome() {
         >
           {notes.length ? (
             <ul className="-mx-2">
-              {notes.map((n) => (
-                <li key={n.id} className="flex items-center gap-1">
-                  <Link
-                    to={`/s/${subject.id}/n/${n.id}`}
-                    viewTransition
-                    className="group flex min-w-0 flex-1 items-start gap-3 rounded-xl px-2 py-2.5 outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-[15px] font-semibold">{n.title || translate("Без названия")}</div>
-                      <div className="line-clamp-2 text-[13px] text-muted-foreground">{n.excerpt || translate("Нет текста")}</div>
-                    </div>
-                    <span className="shrink-0 pt-0.5 text-[12px] text-muted-foreground tabular-nums">{relativeTime(n.updated)}</span>
-                  </Link>
-                  <ExportMarkdownButton note={n} />
-                </li>
-              ))}
+              <NoteTree
+                notes={notes}
+                renderRow={(n) => (
+                  <>
+                    <Link
+                      to={`/s/${subject.id}/n/${n.id}`}
+                      viewTransition
+                      className="group flex min-w-0 flex-1 items-start gap-3 rounded-xl px-2 py-2.5 outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-[15px] font-semibold">{n.title || translate("Без названия")}</div>
+                        <div className="line-clamp-2 text-[13px] text-muted-foreground">{n.excerpt || translate("Нет текста")}</div>
+                      </div>
+                      <span className="shrink-0 pt-0.5 text-[12px] text-muted-foreground tabular-nums">{relativeTime(n.updated)}</span>
+                    </Link>
+                    <ExportMarkdownButton note={n} />
+                  </>
+                )}
+              />
             </ul>
           ) : (
             <Empty text={translate("Нет конспектов")} />

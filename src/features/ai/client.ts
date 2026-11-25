@@ -74,7 +74,11 @@ interface ChatChoice {
 export interface ChatOptions {
   maxTokens?: number
   temperature?: number
+  signal?: AbortSignal
+  rejectTruncated?: boolean
 }
+
+export class AiIncompleteResponseError extends Error {}
 
 /** Один запрос к OpenAI-совместимому чату. Возвращает текст ответа без обёрток. */
 export async function chat(config: AiConfig, key: string, messages: ChatMessage[], options: ChatOptions = {}): Promise<string> {
@@ -95,15 +99,17 @@ export async function chat(config: AiConfig, key: string, messages: ChatMessage[
 
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), CHAT_TIMEOUT_MS)
+  const signal = options.signal ? AbortSignal.any([controller.signal, options.signal]) : controller.signal
   let response: Response
   try {
     response = await fetch(`${base}/chat/completions`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       body: JSON.stringify(body),
-      signal: controller.signal,
+      signal,
     })
   } catch {
+    options.signal?.throwIfAborted()
     if (controller.signal.aborted) throw new Error("Сервер не ответил за 60 секунд. Проверь адрес и интернет и попробуй ещё раз.")
     throw new Error("Не удалось связаться с сервером. Проверь адрес и интернет. Для Ollama разреши CORS: OLLAMA_ORIGINS.")
   } finally {
@@ -130,10 +136,11 @@ export async function chat(config: AiConfig, key: string, messages: ChatMessage[
       : Array.isArray(content)
         ? content.map((part) => (typeof part?.text === "string" ? part.text : "")).join("")
         : ""
+  if (choice?.finish_reason === "length" && (options.rejectTruncated || !text.trim()))
+    throw new AiIncompleteResponseError("Ответ обрезан по лимиту токенов. Выбери модель попроще и повтори.")
   if (text.trim()) return text.trim()
-  if (choice?.finish_reason === "length") throw new Error("Ответ обрезан по лимиту токенов. Выбери модель попроще и повтори.")
   if (choice?.message?.reasoning_content?.trim()) {
-    throw new Error("Модель ушла в рассуждения и не оставила ответ. Выбери deepseek-chat или отключи размышления.")
+    throw new AiIncompleteResponseError("Модель ушла в рассуждения и не оставила ответ. Выбери deepseek-chat или отключи размышления.")
   }
-  throw new Error("Модель вернула пустой ответ. Попробуй другую модель.")
+  throw new AiIncompleteResponseError("Модель вернула пустой ответ. Попробуй другую модель.")
 }

@@ -21,7 +21,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/Sidebar"
-import { openNewSubject } from "@/features/subjects/NewSubjectDialog"
+import { openNewSubject } from "@/features/subjects/subjectDialog"
 import { SubjectTree } from "@/features/subjects/SubjectTree"
 import { upperFirst } from "@/lib/format"
 import { cn } from "@/lib/utils"

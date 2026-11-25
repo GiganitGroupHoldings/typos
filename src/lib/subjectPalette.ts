@@ -53,3 +53,5 @@ export const SUBJECT_ICONS: { id: SubjectIcon; label: string }[] = [
 
 export const SUBJECT_COLOR_IDS = SUBJECT_COLORS.map((c) => c.id)
 export const SUBJECT_ICON_IDS = SUBJECT_ICONS.map((i) => i.id)
+
+export const validCustomColor = (color: unknown) => (typeof color === "string" && /^#[0-9a-f]{6}$/i.test(color) ? color : undefined)

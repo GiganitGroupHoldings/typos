@@ -1,7 +1,9 @@
 import { act, createElement } from "react"
 import { createRoot, type Root } from "react-dom/client"
+import { MemoryRouter, useLocation } from "react-router"
 import { afterEach, beforeEach, expect, it, vi } from "vitest"
 import { TooltipProvider } from "@/components/ui/Tooltip"
+import { TOOL_DRAG_TYPE } from "@/features/tools/drag"
 import type { Board } from "@/types"
 import { useVault } from "@/vault/store"
 import { BoardCanvas } from "./BoardCanvas"
@@ -28,11 +30,17 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => root.unmount())
   host.remove()
+  useVault.setState({ tools: [] })
   vi.useRealTimers()
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
   Reflect.deleteProperty(document, "elementFromPoint")
 })
+
+function LocationProbe() {
+  const { pathname } = useLocation()
+  return createElement("span", { "data-location": "" }, pathname)
+}
 
 async function openBoard(shape?: BoardFrameShape, extra: BoardNode[] = []) {
   const frame: BoardNode = { id: "frame", type: "group", x: 100, y: 200, width: 600, height: 140, shape, color: "6", label: "Раздел" }
@@ -44,7 +52,16 @@ async function openBoard(shape?: BoardFrameShape, extra: BoardNode[] = []) {
     name: "Доска",
     data: { nodes: [frame, card, ...extra], edges: [] },
   }
-  await act(async () => root.render(createElement(TooltipProvider, null, createElement(BoardCanvas, { board }))))
+  await act(async () =>
+    root.render(
+      createElement(
+        MemoryRouter,
+        null,
+        createElement(LocationProbe),
+        createElement(TooltipProvider, null, createElement(BoardCanvas, { board })),
+      ),
+    ),
+  )
   return { frame, card }
 }
 
@@ -102,7 +119,7 @@ it("сохраняет размеры новой формы со всем сод
     label: "Репозиторий",
   }
   const { frame, card } = await openBoard(undefined, [link])
-  const canvas = host.firstElementChild as HTMLElement
+  const canvas = host.querySelector<HTMLElement>("[data-board-canvas]")!
   canvas.setPointerCapture = vi.fn()
   await act(async () => {
     host.querySelector('[data-node-id="frame"] path')!.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, button: 0 }))
@@ -127,4 +144,58 @@ it("сохраняет размеры новой формы со всем сод
   await click("Отменить")
   await act(async () => vi.advanceTimersByTimeAsync(600))
   expect(vi.mocked(useVault.getState().saveBoard).mock.calls.at(-1)![1].nodes).toEqual([frame, card, link])
+})
+
+it("добавляет на доску ярлык файла проекта, не копируя сам файл", async () => {
+  await openBoard()
+  const canvas = host.querySelector<HTMLElement>("[data-board-canvas]")!
+  const dt = {
+    files: [],
+    types: [TOOL_DRAG_TYPE],
+    getData: (type: string) => (type === TOOL_DRAG_TYPE ? JSON.stringify({ subjectId: "s1", toolId: "t1", name: "Схема.pdf" }) : ""),
+  } as unknown as DataTransfer
+  const event = new MouseEvent("drop", { bubbles: true, clientX: 500, clientY: 400 })
+  Object.defineProperty(event, "dataTransfer", { value: dt })
+  await act(async () => canvas.dispatchEvent(event))
+  await act(async () => vi.advanceTimersByTimeAsync(600))
+  const saved = vi.mocked(useVault.getState().saveBoard).mock.calls.at(-1)![1]
+  expect(saved.nodes.find((n) => n.tool)).toMatchObject({
+    type: "link",
+    label: "Схема.pdf",
+    tool: { subjectId: "s1", toolId: "t1" },
+  })
+})
+
+it("по щелчку на ярлыке открывает файл в его проекте", async () => {
+  useVault.setState({
+    tools: [
+      {
+        id: "t1",
+        subjectId: "s1",
+        path: "s1/Проекты/Схема.pdf",
+        name: "Схема.pdf",
+        kind: "pdf",
+        ext: "pdf",
+        icon: "grid",
+        html: "",
+      },
+    ],
+  })
+  const toolNode: BoardNode = {
+    id: "tool",
+    type: "link",
+    x: 0,
+    y: 0,
+    width: 160,
+    height: 96,
+    label: "Схема.pdf",
+    tool: { subjectId: "s1", toolId: "t1" },
+  }
+  await openBoard(undefined, [toolNode])
+  const canvas = host.querySelector<HTMLElement>("[data-board-canvas]")!
+  canvas.setPointerCapture = vi.fn()
+  const surface = host.querySelector('[data-node-id="tool"] [data-link-surface]')!
+  await act(async () => surface.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, button: 0, clientX: 300, clientY: 300 })))
+  await act(async () => canvas.dispatchEvent(new MouseEvent("pointerup", { bubbles: true, button: 0, clientX: 300, clientY: 300 })))
+  expect(host.querySelector("[data-location]")?.textContent).toBe("/s/s1/t/t1")
 })

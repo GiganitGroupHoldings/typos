@@ -171,6 +171,7 @@ export function boardForModel(data: BoardData) {
       ...(n.label ? { label: n.label } : {}),
       ...(n.url ? { url: n.url } : {}),
       ...(n.file ? { file: n.file } : {}),
+      ...(n.tool ? { tool: n.tool } : {}),
       ...(n.color ? { color: n.color } : {}),
       x: n.x,
       y: n.y,

@@ -121,6 +121,12 @@ it("работает без ключа и не отправляет Authorizatio
   expect(init.headers).toMatchObject({ "Content-Type": "application/json" })
 })
 
+it("отклоняет неполную замену всего конспекта", async () => {
+  const cut = { choices: [{ finish_reason: "length", message: { content: "Только начало конспекта" } }] }
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json(cut)))
+  await expect(chat({ baseUrl: "https://api.example.com/v1", model: "m" }, "k", [], { rejectTruncated: true })).rejects.toThrow("обрезан")
+})
+
 it("объясняет лимит запросов и пустой ответ", async () => {
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 429 })))
   await expect(chat({ baseUrl: "https://api.example.com/v1", model: "m" }, "k", [])).rejects.toThrow("слишком много запросов")

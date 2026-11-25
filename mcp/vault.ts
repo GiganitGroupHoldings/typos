@@ -33,7 +33,9 @@ export class StudyVault {
   private load = () => repo.loadVault(this.a)
 
   private subject(data: repo.VaultData, ref: string): Subject {
-    const s = data.subjects.find((x) => x.id === ref) ?? data.subjects.find((x) => norm(x.name) === norm(ref))
+    const matches = data.subjects.filter((x) => norm(x.name) === norm(ref))
+    const s = data.subjects.find((x) => x.id === ref) ?? matches.find((x) => !x.parentId) ?? (matches.length === 1 ? matches[0] : undefined)
+    if (!s && matches.length > 1) throw new Error(`Несколько папок с названием «${ref}». Укажи id из list_subjects.`)
     if (!s) throw new Error(`Нет предмета «${ref}». Есть: ${data.subjects.map((x) => x.name).join(", ") || "пока ни одного"}`)
     return s
   }
@@ -56,6 +58,8 @@ export class StudyVault {
       id: s.id,
       name: s.name,
       color: s.color,
+      ...(s.customColor ? { customColor: s.customColor } : {}),
+      ...(s.parentId ? { parentId: s.parentId } : {}),
       icon: s.icon,
       notes: d.notes.filter((n) => n.subjectId === s.id).length,
       pins: d.pins.filter((p) => p.subjectId === s.id).length,
@@ -66,12 +70,12 @@ export class StudyVault {
 
   async createSubject(input: { name: string; color?: SubjectColor; icon?: SubjectIcon }) {
     const d = await this.load()
-    const existing = d.subjects.find((s) => norm(s.name) === norm(input.name))
+    const roots = d.subjects.filter((s) => !s.parentId)
+    const existing = roots.find((s) => norm(s.name) === norm(input.name))
     if (existing) return { id: existing.id, name: existing.name, created: false }
-    const used = new Set(d.subjects.map((s) => s.color))
-    const color =
-      input.color ?? SUBJECT_COLOR_IDS.find((c) => !used.has(c)) ?? SUBJECT_COLOR_IDS[d.subjects.length % SUBJECT_COLOR_IDS.length]
-    const order = Math.max(-1, ...d.subjects.map((s) => s.order)) + 1
+    const used = new Set(roots.map((s) => s.color))
+    const color = input.color ?? SUBJECT_COLOR_IDS.find((c) => !used.has(c)) ?? SUBJECT_COLOR_IDS[roots.length % SUBJECT_COLOR_IDS.length]
+    const order = Math.max(-1, ...roots.map((s) => s.order)) + 1
     const s = await repo.createSubject(this.a, { name: input.name, color, icon: input.icon ?? "book" }, order)
     return { id: s.id, name: s.name, created: true }
   }
@@ -82,6 +86,8 @@ export class StudyVault {
     return {
       id: s.id,
       name: s.name,
+      ...(s.parentId ? { parentId: s.parentId } : {}),
+      subfolders: d.subjects.filter((child) => child.parentId === s.id).map(({ id, name }) => ({ id, name })),
       notes: d.notes
         .filter((n) => n.subjectId === s.id)
         .sort((x, y) => y.updated.localeCompare(x.updated))
@@ -90,6 +96,7 @@ export class StudyVault {
           title: n.title,
           updated: n.updated,
           excerpt: n.excerpt,
+          ...(n.meta.parentNoteId ? { parentNoteId: n.meta.parentNoteId } : {}),
           ...(n.meta.source ? { source: n.meta.source } : {}),
         })),
       pins: d.pins

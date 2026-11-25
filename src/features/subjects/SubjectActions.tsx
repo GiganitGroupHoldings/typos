@@ -1,4 +1,4 @@
-import { GraduationCap, MoreHorizontal, Pencil, Trash2 } from "lucide-react"
+import { FolderPlus, GraduationCap, MoreHorizontal, Pencil, Trash2 } from "lucide-react"
 import { useNavigate } from "react-router"
 import { translate, useLanguage } from "@/app/i18n"
 import { Button } from "@/components/ui/Button"
@@ -12,7 +12,7 @@ import {
 import { toastUndo } from "@/lib/undo"
 import type { Subject } from "@/types"
 import { useVault } from "@/vault/store"
-import { openEditSubject } from "./NewSubjectDialog"
+import { openEditSubject, openNewSubfolder } from "./subjectDialog"
 
 export function SubjectActions({ subject }: { subject: Subject }) {
   useLanguage()
@@ -20,7 +20,7 @@ export function SubjectActions({ subject }: { subject: Subject }) {
 
   const remove = async () => {
     const undo = await useVault.getState().trashSubject(subject.id)
-    navigate("/")
+    navigate(subject.parentId ? `/s/${subject.parentId}` : "/")
     toastUndo(translate("Предмет «{0}» в корзине", subject.name), undo, () => navigate(`/s/${subject.id}`))
   }
 
@@ -32,6 +32,9 @@ export function SubjectActions({ subject }: { subject: Subject }) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        <DropdownMenuItem onSelect={() => openNewSubfolder(subject.id)}>
+          <FolderPlus /> {translate("Новая подпапка")}
+        </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => navigate(`/s/${subject.id}/review`)}>
           <GraduationCap /> {translate("Повторение закрепа")}
         </DropdownMenuItem>

@@ -2,6 +2,7 @@ import { invoke, isTauri } from "@tauri-apps/api/core"
 import { FileText, Link2 } from "lucide-react"
 import { motion, useReducedMotion } from "motion/react"
 import {
+  createElement,
   memo,
   useCallback,
   useEffect,
@@ -15,9 +16,18 @@ import {
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react"
+import { useNavigate } from "react-router"
 import { toast } from "sonner"
 import { translate, useLanguage } from "@/app/i18n"
+import { useUi } from "@/app/store"
 import { clamp, contains, curve, facingSides, rectOf, sidePoint, type Rect, type Side } from "@/editor/map/geometry"
+import { CLOSED_BOARD_ASSISTANT, type BoardAssistantView } from "@/features/ai/assistantView"
+import { BoardAssistant } from "@/features/ai/BoardAssistant"
+import { BOARD_AI_LIMIT, boardRootRequest, boardTreeRequest, parseBoardRoot, parseBoardTree } from "@/features/ai/boardPrompts"
+import { chat } from "@/features/ai/client"
+import { loadAiKey } from "@/features/ai/keyStore"
+import { toolIcon } from "@/features/subjects/visuals"
+import { readToolDrag, TOOL_DRAG_TYPE, type ToolDragPayload } from "@/features/tools/drag"
 import { errorText } from "@/lib/errors"
 import { spring } from "@/lib/motion"
 import { cn } from "@/lib/utils"
@@ -42,7 +52,20 @@ import {
   type BoardEdge,
   type BoardFrameShape,
   type BoardNode,
+  type BoardNoteRef,
 } from "./model"
+import {
+  completionEdges,
+  fallbackBranches,
+  fallbackRoot,
+  isStructureConnected,
+  layoutStructure,
+  structureLinkEdges,
+  structureLinks,
+  structureUnitNodes,
+  structureUnits,
+  type BoardBranch,
+} from "./structure"
 
 type Pt = { x: number; y: number }
 interface View {
@@ -141,6 +164,7 @@ function cloneItems(nodes: BoardNode[], edges: BoardEdge[], dx: number, dy: numb
 
 export function BoardCanvas({ board }: { board: Board }) {
   useLanguage()
+  const navigate = useNavigate()
   const root = useRef<HTMLDivElement>(null)
   const fileInput = useRef<HTMLInputElement>(null)
   const imageLink = useRef<string | undefined>(undefined)
@@ -157,6 +181,9 @@ export function BoardCanvas({ board }: { board: Board }) {
   const [editing, setEditing] = useState<Editing>(null)
   const [linkDialog, setLinkDialog] = useState<{ id: string } | { at: Pt } | null>(null)
   const linkClicks = useRef<{ id: string; count: number } | null>(null)
+  const [assistant, setAssistant] = useState<BoardAssistantView>(CLOSED_BOARD_ASSISTANT)
+  const assistantSeq = useRef(0)
+  const aiBusy = useRef(false)
   const reduceMotion = useReducedMotion()
   const [drag, setDragState] = useState<Drag | null>(null)
   const dragRef = useRef<Drag | null>(null)
@@ -209,6 +236,14 @@ export function BoardCanvas({ board }: { board: Board }) {
     [flush],
   )
 
+  useEffect(
+    () => () => {
+      // Ответ, пришедший после закрытия доски, уже никому не нужен.
+      assistantSeq.current++
+    },
+    [],
+  )
+
   useEffect(() => {
     useVault.getState().adoptBoard(boardId, dataRef.current)
 
@@ -234,14 +269,14 @@ export function BoardCanvas({ board }: { board: Board }) {
     }
   }, [boardId, flush])
 
-  const fit = useCallback(() => {
+  const fit = useCallback((minZoom = MIN_ZOOM) => {
     const el = root.current
     if (!el) return
     const b = boardBounds(dataRef.current.nodes)
     const w = el.clientWidth
     const h = el.clientHeight
     if (!b) return setView({ x: w / 2, y: h / 2, zoom: 1 })
-    const zoom = clamp(Math.min((w - 120) / b.width, (h - 160) / b.height), MIN_ZOOM, 1)
+    const zoom = clamp(Math.min((w - 120) / b.width, (h - 160) / b.height), minZoom, 1)
     setView({ zoom, x: w / 2 - (b.x + b.width / 2) * zoom, y: h / 2 - (b.y + b.height / 2) * zoom })
   }, [])
 
@@ -299,6 +334,32 @@ export function BoardCanvas({ board }: { board: Board }) {
     commit({ nodes: [...m.nodes, ...nodes], edges: [...m.edges, ...edges] }, true, new Set(nodes.map((n) => n.id)))
     setSel(nodes.map((n) => n.id))
     setSelEdge(null)
+  }
+
+  /** Ярлык ведёт туда, откуда файл: в проекты его предмета, а не в копию на доске. */
+  const openToolShortcut = (n: BoardNode) => {
+    const ref = n.tool
+    if (!ref) return
+    const tool = useVault.getState().tools.find((t) => t.id === ref.toolId && t.subjectId === ref.subjectId)
+    navigate(tool ? `/s/${tool.subjectId}/t/${tool.id}` : `/s/${ref.subjectId}?tab=tools`)
+  }
+
+  const addToolShortcut = (payload: ToolDragPayload, at: Pt) => {
+    const width = 160
+    const height = 96
+    const tool = useVault.getState().tools.find((t) => t.id === payload.toolId && t.subjectId === payload.subjectId)
+    addNodes([
+      {
+        id: boardItemId(),
+        type: "link",
+        tool: { subjectId: payload.subjectId, toolId: payload.toolId },
+        label: payload.name || tool?.name || translate("Файл проекта"),
+        width,
+        height,
+        x: Math.round(at.x - width / 2),
+        y: Math.round(at.y - height / 2),
+      },
+    ])
   }
 
   const updateNode = (id: string, patch: Partial<Pick<BoardNode, "shape" | "url" | "label" | "file">>) => {
@@ -365,6 +426,139 @@ export function BoardCanvas({ board }: { board: Board }) {
     past.current.push(dataRef.current)
     commit(next, false)
     setEditing(null)
+  }
+
+  const undoStructure = () => {
+    undo()
+    setAssistant((cur) => ({ ...cur, status: "idle", summary: "" }))
+  }
+
+  const runStructure = async () => {
+    if (aiBusy.current) return
+    const snapshot = dataRef.current
+    const units = structureUnits(snapshot)
+    if (units.length < 2) {
+      setAssistant({
+        open: true,
+        status: "error",
+        step: "",
+        summary: "",
+        error: translate("На доске мало блоков: нужно хотя бы два."),
+      })
+      return
+    }
+    const unitNodes = structureUnitNodes(units)
+    const links = structureLinks(snapshot, units)
+    const unitEdges = structureLinkEdges(links)
+    const cards = units.map((unit) => ({ id: unit.id, text: unit.text }))
+    const connected = isStructureConnected(units, links)
+    if (!connected && cards.length > BOARD_AI_LIMIT) {
+      setAssistant({
+        open: true,
+        status: "error",
+        step: "",
+        summary: "",
+        error: translate("Слишком большая доска для помощника. Оставь не больше {0} блоков.", BOARD_AI_LIMIT),
+      })
+      return
+    }
+
+    const ticket = ++assistantSeq.current
+    aiBusy.current = true
+    setAssistant({
+      open: true,
+      status: "loading",
+      step: translate(connected ? "Раскладываю блоки…" : "Шаг 1 из 2. Ищу главную мысль…"),
+      summary: "",
+      error: "",
+    })
+    try {
+      let branches: BoardBranch[] | null = null
+      let root = ""
+      let warning = ""
+      try {
+        if (!connected) {
+          const key = await loadAiKey().catch(() => null)
+          const { aiBaseUrl, aiModel } = useUi.getState()
+          const config = { baseUrl: aiBaseUrl, model: aiModel }
+
+          const rootRequest = boardRootRequest(cards, unitEdges)
+          const rootAnswer = await chat(config, key ?? "", rootRequest.messages, rootRequest)
+          if (ticket !== assistantSeq.current) return
+          root = parseBoardRoot(rootAnswer, cards) ?? fallbackRoot(unitNodes, unitEdges)
+
+          setAssistant((cur) => ({ ...cur, step: translate("Шаг 2 из 2. Раскладываю ветви…") }))
+          const treeRequest = boardTreeRequest(cards, unitEdges, root)
+          const treeAnswer = await chat(config, key ?? "", treeRequest.messages, treeRequest)
+          if (ticket !== assistantSeq.current) return
+          branches = parseBoardTree(treeAnswer, cards, root)
+        }
+      } catch (e) {
+        if (ticket !== assistantSeq.current) return
+        // Без ИИ доску всё равно можно разложить по её же связям.
+        warning = errorText(e)
+      }
+      if (ticket !== assistantSeq.current) return
+      // Пока модель отвечала, доску могли изменить: старые id уже не те.
+      if (dataRef.current !== snapshot) {
+        setAssistant({
+          open: true,
+          status: "error",
+          step: "",
+          summary: "",
+          error: translate("Доска изменилась, пока помощник думал. Попробуй ещё раз."),
+        })
+        return
+      }
+      if (!connected) {
+        if (!root) root = fallbackRoot(unitNodes, unitEdges)
+        if (!branches) branches = fallbackBranches(unitNodes, unitEdges, root)
+      }
+
+      const extra = branches ? completionEdges(units, links, branches) : []
+      setAssistant((cur) => ({ ...cur, step: translate("Раскладываю блоки…") }))
+      const next = layoutStructure(snapshot, units, extra)
+      setAssistant({
+        open: true,
+        status: "done",
+        step: "",
+        summary: translate("Блоков: {0}. Связей: {1}.", units.length, links.length + extra.length),
+        error: "",
+      })
+      commit(next, true)
+      fit(0.4)
+      if (warning) {
+        toast.warning(translate("ИИ не ответил — разложил по связям"), {
+          description: warning,
+          action: { label: translate("Отменить"), onClick: undoStructure },
+        })
+      } else {
+        toast.success(translate("Дерево мыслей готово"), {
+          action: { label: translate("Отменить"), onClick: undoStructure },
+        })
+      }
+    } catch (e) {
+      if (ticket !== assistantSeq.current) return
+      setAssistant({ open: true, status: "error", step: "", summary: "", error: errorText(e) })
+    } finally {
+      aiBusy.current = false
+    }
+  }
+
+  const openAssistant = () => {
+    const run = assistant.status === "idle"
+    setAssistant((cur) => ({ ...cur, open: true }))
+    if (run && !aiBusy.current) void runStructure()
+  }
+
+  const closeAssistant = () => {
+    // Закрыли во время запроса — его ответ больше не нужен.
+    if (assistant.status === "loading") {
+      assistantSeq.current++
+      setAssistant(CLOSED_BOARD_ASSISTANT)
+      return
+    }
+    setAssistant((cur) => ({ ...cur, open: false }))
   }
 
   const selectedItems = () => {
@@ -601,6 +795,14 @@ export function BoardCanvas({ board }: { board: Board }) {
     if (!d) return
     const m = dataRef.current
 
+    // Ярлык проекта открывается одиночным щелчком, как ссылка в меню; перетаскивание его не открывает.
+    const clicked = click && !d.shift && d.kind === "move" ? node(d.id) : undefined
+    if (clicked?.tool) {
+      linkClicks.current = null
+      openToolShortcut(clicked)
+      return
+    }
+
     if (d.kind === "move" && !d.moved && !d.shift && sel.length > 1) setSel([d.id])
     if (d.kind === "connect") {
       const target = nodeAt(m.nodes, p, d.from)
@@ -639,6 +841,7 @@ export function BoardCanvas({ board }: { board: Board }) {
     const edgeEl = target.closest<Element>("[data-edge-id]")
     if (nodeEl) {
       const n = node(nodeEl.dataset.nodeId!)
+      if (n?.tool) return
       if (n?.type === "link") {
         const clicks = linkClicks.current
         linkClicks.current = null
@@ -729,6 +932,7 @@ export function BoardCanvas({ board }: { board: Board }) {
       stop()
       const n = sel.length === 1 ? node(sel[0]) : undefined
       if (selEdge) setEditing({ kind: "edge", id: selEdge })
+      else if (n?.tool) openToolShortcut(n)
       else if (n?.type === "link") setLinkDialog({ id: n.id })
       else if (n && n.type !== "file") setEditing({ kind: "node", id: n.id })
     } else if (e.shiftKey && e.code === "Digit1") {
@@ -812,6 +1016,13 @@ export function BoardCanvas({ board }: { board: Board }) {
   })
 
   const onDrop = (e: ReactDragEvent<HTMLDivElement>) => {
+    const tool = readToolDrag(e.dataTransfer)
+    if (tool) {
+      e.preventDefault()
+      e.stopPropagation()
+      addToolShortcut(tool, world(e))
+      return
+    }
     const files = [...e.dataTransfer.files]
     const link = (e.target as Element).closest("[data-link-surface]")?.closest<HTMLElement>("[data-node-id]")
     if (link?.dataset.nodeId && files[0]) {
@@ -870,7 +1081,12 @@ export function BoardCanvas({ board }: { board: Board }) {
       onKeyDown={onKeyDown}
       onKeyUp={(e) => e.code === "Space" && setSpaceHeld(false)}
       onBlur={() => setSpaceHeld(false)}
-      onDragOver={(e) => e.dataTransfer.types.includes("Files") && e.preventDefault()}
+      onDragOver={(e) => {
+        const types = e.dataTransfer.types
+        if (!types.includes("Files") && !types.includes(TOOL_DRAG_TYPE)) return
+        e.preventDefault()
+        e.dataTransfer.dropEffect = "copy"
+      }}
       onDrop={onDrop}
       style={{
         backgroundImage: "radial-gradient(circle, var(--board-dot) 1px, transparent 1.3px)",
@@ -1045,7 +1261,7 @@ export function BoardCanvas({ board }: { board: Board }) {
           onDuplicate={selectedEdge ? undefined : duplicate}
           frameShape={selectedNode?.type === "group" ? (selectedNode.shape ?? "rectangle") : undefined}
           onFrameShape={setFrameShape}
-          onEditLink={selectedNode?.type === "link" ? () => setLinkDialog({ id: selectedNode.id }) : undefined}
+          onEditLink={selectedNode?.type === "link" && !selectedNode.tool ? () => setLinkDialog({ id: selectedNode.id }) : undefined}
           onDelete={removeSelection}
         />
       )}
@@ -1065,7 +1281,7 @@ export function BoardCanvas({ board }: { board: Board }) {
         onLink={() => setLinkDialog({ at: center() })}
         zoom={view.zoom}
         onZoom={zoomBy}
-        onFit={fit}
+        onFit={() => fit()}
         onUndo={undo}
         onRedo={redo}
       />
@@ -1086,6 +1302,14 @@ export function BoardCanvas({ board }: { board: Board }) {
           if (id && files[0]) void setLinkImage(id, files[0])
           else void addImages(files, center())
         }}
+      />
+      <BoardAssistant
+        view={assistant}
+        boardName={board.name}
+        onOpen={openAssistant}
+        onClose={closeAssistant}
+        onRetry={() => void runStructure()}
+        onUndo={undoStructure}
       />
     </div>
   )
@@ -1204,9 +1428,11 @@ const NodeView = memo(function NodeView({
             className={cn(
               "size-full overflow-hidden px-3.5 py-3 text-[15px] leading-[1.45] break-words",
               sticky && "flex flex-col justify-center text-center",
+              n.note && "pb-10",
             )}
           >
             <BoardText text={n.text ?? ""} />
+            {n.note && <NoteSourceLink source={n.note} />}
           </div>
         )}
       </motion.div>
@@ -1247,6 +1473,34 @@ const NodeView = memo(function NodeView({
     </div>
   )
 })
+
+function NoteSourceLink({ source }: { source: BoardNoteRef }) {
+  const navigate = useNavigate()
+  const title = translate(source.quote ? "К фрагменту конспекта" : "Открыть конспект")
+  return (
+    <button
+      type="button"
+      title={source.quote}
+      className="absolute right-2 bottom-2 flex h-7 items-center gap-1 rounded-md bg-card px-2 text-xs text-card-foreground hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
+      onPointerDown={(event) => event.stopPropagation()}
+      onDoubleClick={(event) => event.stopPropagation()}
+      onKeyDown={(event) => event.stopPropagation()}
+      onClick={(event) => {
+        event.stopPropagation()
+        const params = new URLSearchParams()
+        if (source.quote && source.block !== undefined) {
+          params.set("block", String(source.block))
+          params.set("quote", source.quote)
+        }
+        const search = params.size ? `?${params}` : ""
+        void navigate(`/s/${encodeURIComponent(source.subjectId)}/n/${encodeURIComponent(source.noteId)}${search}`)
+      }}
+    >
+      <FileText className="size-3.5" />
+      {title}
+    </button>
+  )
+}
 
 function FileNode({ path }: { path?: string }) {
   useLanguage()
@@ -1310,6 +1564,37 @@ function FrameSurface({ node, selected, morph }: { node: BoardNode; selected: bo
 }
 
 function LinkNode({ node }: { node: BoardNode }) {
+  return node.tool ? <ToolLinkNode node={node} /> : <ExternalLinkNode node={node} />
+}
+
+/** Ярлык файла проекта: имя и иконка живут в «Проектах», на доске только ссылка. */
+function ToolLinkNode({ node }: { node: BoardNode }) {
+  useLanguage()
+  const tool = useVault((s) => s.tools.find((t) => t.id === node.tool?.toolId && t.subjectId === node.tool?.subjectId))
+  const Icon = tool ? toolIcon(tool) : Link2
+  const name = tool?.name || node.label || translate("Файл проекта")
+  return (
+    <div className="flex size-full flex-col items-center justify-center gap-1.5">
+      <div
+        data-link-surface=""
+        title={name}
+        className="liquid liquid-lava pointer-events-auto flex aspect-square min-h-0 max-h-14 shrink items-center justify-center overflow-hidden rounded-full shadow-float"
+        style={{ height: "60%", color: node.color ? lineColor(node.color) : "var(--highlight)" }}
+      >
+        {createElement(Icon, { "aria-hidden": true, className: "size-1/2" })}
+      </div>
+      <div
+        data-link-surface=""
+        title={name}
+        className="liquid liquid-lava pointer-events-auto max-w-full shrink-0 truncate rounded-full px-3 py-1 text-center text-[14px] font-medium shadow-float"
+      >
+        {name}
+      </div>
+    </div>
+  )
+}
+
+function ExternalLinkNode({ node }: { node: BoardNode }) {
   useLanguage()
   const label = node.label || node.url || translate("Ссылка")
   const image = useVaultImage(node.file)

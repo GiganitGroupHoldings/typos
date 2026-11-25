@@ -53,11 +53,15 @@ export interface Subject {
   id: string
   name: string
   color: SubjectColor
+  customColor?: string
+  parentId?: string
   icon: SubjectIcon
   order: number
 
   dir: string
 }
+
+export type SubjectInput = Pick<Subject, "name" | "color" | "customColor" | "icon">
 
 export interface Note {
   id: string

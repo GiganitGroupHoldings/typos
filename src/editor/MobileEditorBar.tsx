@@ -1,16 +1,16 @@
 import { useEditorState, type Editor } from "@tiptap/react"
 import {
   Bold,
-  BookOpen,
   Download,
+  FilePlus2,
   Heading2,
   ImagePlus,
   Italic,
+  LayoutDashboard,
   List,
   ListChecks,
   ListOrdered,
   MoreHorizontal,
-  PenLine,
   Pin,
   Quote,
   Radical,
@@ -40,13 +40,14 @@ import { cn } from "@/lib/utils"
 
 interface Props {
   editor: Editor
-  reading?: boolean
-  onReading: () => void
+  onFonts: () => void
   onFormula: () => void
   onBlockFormula: () => void
   onImage: () => void
   onPin: () => void
   onExport: () => void
+  onCreateBoard: () => void
+  onCreateSubnote?: () => void
   onDelete: () => void
   saveState: "saved" | "dirty" | "saving" | "error" | "conflict"
   noteSize: NoteSize
@@ -83,13 +84,14 @@ function BarButton({ icon: Icon, label, active, onClick }: { icon: LucideIcon; l
 /** Нижняя панель форматирования для телефона: не перекрывает текст и поднимается над клавиатурой. */
 export function MobileEditorBar({
   editor,
-  reading,
-  onReading,
+  onFonts,
   onFormula,
   onBlockFormula,
   onImage,
   onPin,
   onExport,
+  onCreateBoard,
+  onCreateSubnote,
   onDelete,
   saveState,
   noteSize,
@@ -138,45 +140,35 @@ export function MobileEditorBar({
             style={{ marginLeft: "max(0.5rem, var(--safe-left))", marginRight: "max(0.5rem, var(--safe-right))" }}
             className="liquid liquid-lava flex items-center gap-0.5 overflow-x-auto rounded-2xl p-1 shadow-float no-scrollbar"
           >
-            {reading ? (
-              <>
-                <BarButton icon={PenLine} label={translate("Редактировать")} onClick={onReading} />
-                <BarButton icon={Download} label={translate("Скачать Markdown")} onClick={onExport} />
-                <BarButton icon={MoreHorizontal} label={translate("Ещё")} onClick={() => setMore(true)} />
-              </>
-            ) : (
-              <>
-                <BarButton icon={Bold} label={translate("Жирный")} active={state.bold} onClick={() => c().toggleBold().run()} />
-                <BarButton icon={Italic} label={translate("Курсив")} active={state.italic} onClick={() => c().toggleItalic().run()} />
-                <BarButton icon={List} label={translate("Список")} active={state.bullet} onClick={() => c().toggleBulletList().run()} />
-                <BarButton icon={Radical} label={translate("Формула в строке")} onClick={onFormula} />
-                <BarButton icon={ImagePlus} label={translate("Картинка")} onClick={onImage} />
+            <BarButton icon={Bold} label={translate("Жирный")} active={state.bold} onClick={() => c().toggleBold().run()} />
+            <BarButton icon={Italic} label={translate("Курсив")} active={state.italic} onClick={() => c().toggleItalic().run()} />
+            <BarButton icon={List} label={translate("Список")} active={state.bullet} onClick={() => c().toggleBulletList().run()} />
+            <BarButton icon={Radical} label={translate("Формула в строке")} onClick={onFormula} />
+            <BarButton icon={ImagePlus} label={translate("Картинка")} onClick={onImage} />
 
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      type="button"
-                      aria-label={translate("Размер текста")}
-                      className={cn(BUTTON, "text-foreground/80 hover:bg-foreground/5")}
-                    >
-                      <Type />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent side="top" align="center" className="min-w-36">
-                    <DropdownMenuLabel>{translate("Размер текста")}</DropdownMenuLabel>
-                    <DropdownMenuRadioGroup value={noteSize} onValueChange={(v) => onNoteSize(v as NoteSize)}>
-                      {NOTE_SIZES.map((size) => (
-                        <DropdownMenuRadioItem key={size} value={size}>
-                          {translate(NOTE_SIZE_LABELS[size])}
-                        </DropdownMenuRadioItem>
-                      ))}
-                    </DropdownMenuRadioGroup>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={translate("Размер текста")}
+                  className={cn(BUTTON, "text-foreground/80 hover:bg-foreground/5")}
+                >
+                  <Type />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="top" align="center" className="min-w-36">
+                <DropdownMenuLabel>{translate("Размер текста")}</DropdownMenuLabel>
+                <DropdownMenuRadioGroup value={noteSize} onValueChange={(v) => onNoteSize(v as NoteSize)}>
+                  {NOTE_SIZES.map((size) => (
+                    <DropdownMenuRadioItem key={size} value={size}>
+                      {translate(NOTE_SIZE_LABELS[size])}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-                <BarButton icon={MoreHorizontal} label={translate("Ещё")} onClick={() => setMore(true)} />
-              </>
-            )}
+            <BarButton icon={MoreHorizontal} label={translate("Ещё")} onClick={() => setMore(true)} />
           </div>
         </div>,
         document.body,
@@ -188,59 +180,55 @@ export function MobileEditorBar({
             <SheetTitle>{translate("Ещё")}</SheetTitle>
             <SheetDescription aria-live="polite">{translate(SAVE_LABEL[saveState])}</SheetDescription>
           </SheetHeader>
-          {!reading && (
-            <>
-              <p className="px-4 text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">{translate("Форматирование")}</p>
-              <div className="grid grid-cols-3 gap-1.5 px-4">
-                <MoreButton
-                  icon={Heading2}
-                  label={translate("Подзаголовок")}
-                  active={state.h2}
-                  onClick={() => close(() => c().toggleHeading({ level: 2 }).run())}
-                />
-                <MoreButton
-                  icon={ListOrdered}
-                  label={translate("Нумерация")}
-                  active={state.ordered}
-                  onClick={() => close(() => c().toggleOrderedList().run())}
-                />
-                <MoreButton
-                  icon={ListChecks}
-                  label={translate("Чек-лист")}
-                  active={state.task}
-                  onClick={() => close(() => c().toggleTaskList().run())}
-                />
-                <MoreButton
-                  icon={Quote}
-                  label={translate("Цитата")}
-                  active={state.quote}
-                  onClick={() => close(() => c().toggleBlockquote().run())}
-                />
-                <MoreButton
-                  icon={Table}
-                  label={translate("Таблица")}
-                  active={state.table}
-                  onClick={() => close(() => !state.table && c().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run())}
-                />
-                <MoreButton icon={SquareFunction} label={translate("Блочная формула")} onClick={() => close(onBlockFormula)} />
-                <MoreButton icon={Pin} label={translate("В закреп")} onClick={() => close(onPin)} />
-                <MoreButton
-                  icon={Workflow}
-                  label={mapMode ? translate("Выйти из карты") : translate("Карта")}
-                  active={mapMode}
-                  onClick={() => close(() => setMapMode(!mapMode))}
-                />
-              </div>
-            </>
-          )}
+          <p className="px-4 text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">{translate("Форматирование")}</p>
+          <div className="grid grid-cols-3 gap-1.5 px-4">
+            <MoreButton
+              icon={Heading2}
+              label={translate("Подзаголовок")}
+              active={state.h2}
+              onClick={() => close(() => c().toggleHeading({ level: 2 }).run())}
+            />
+            <MoreButton
+              icon={ListOrdered}
+              label={translate("Нумерация")}
+              active={state.ordered}
+              onClick={() => close(() => c().toggleOrderedList().run())}
+            />
+            <MoreButton
+              icon={ListChecks}
+              label={translate("Чек-лист")}
+              active={state.task}
+              onClick={() => close(() => c().toggleTaskList().run())}
+            />
+            <MoreButton
+              icon={Quote}
+              label={translate("Цитата")}
+              active={state.quote}
+              onClick={() => close(() => c().toggleBlockquote().run())}
+            />
+            <MoreButton
+              icon={Table}
+              label={translate("Таблица")}
+              active={state.table}
+              onClick={() => close(() => !state.table && c().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run())}
+            />
+            <MoreButton icon={SquareFunction} label={translate("Блочная формула")} onClick={() => close(onBlockFormula)} />
+            <MoreButton icon={Pin} label={translate("В закреп")} onClick={() => close(onPin)} />
+            <MoreButton
+              icon={Workflow}
+              label={mapMode ? translate("Выйти из карты") : translate("Карта")}
+              active={mapMode}
+              onClick={() => close(() => setMapMode(!mapMode))}
+            />
+          </div>
           <p className="mt-2 px-4 text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">{translate("Конспект")}</p>
           <div className="grid grid-cols-3 gap-1.5 px-4 pb-2">
-            <MoreButton
-              icon={reading ? PenLine : BookOpen}
-              label={reading ? translate("Редактировать") : translate("Чтение")}
-              onClick={() => close(onReading)}
-            />
+            <MoreButton icon={Type} label={translate("Шрифт текста")} onClick={() => close(onFonts)} />
             <MoreButton icon={Download} label={translate("Скачать .md")} onClick={() => close(onExport)} />
+            <MoreButton icon={LayoutDashboard} label={translate("Создать доску по конспекту")} onClick={() => close(onCreateBoard)} />
+            {onCreateSubnote && (
+              <MoreButton icon={FilePlus2} label={translate("Новый дочерний конспект")} onClick={() => close(onCreateSubnote)} />
+            )}
             <MoreButton icon={Trash2} label={translate("Удалить")} danger onClick={() => close(onDelete)} />
           </div>
         </SheetContent>

@@ -6,7 +6,7 @@ import { translate, useLanguage } from "@/app/i18n"
 import { LiquidButton } from "@/components/ui/LiquidButton"
 import { LensBox, useLiquidLens } from "@/components/ui/LiquidLens"
 import { CARD_LENS } from "@/components/ui/liquidLensOptions"
-import { openNewSubject } from "@/features/subjects/NewSubjectDialog"
+import { openNewSubject } from "@/features/subjects/subjectDialog"
 import { SubjectBadge, subjectStyle } from "@/features/subjects/visuals"
 import { plural, relativeTime } from "@/lib/format"
 import { listItem, listParent, pageEnter } from "@/lib/motion"
@@ -35,6 +35,7 @@ function SubjectCard({ subject: s, children }: { subject: Subject; children: Rea
 export function HomePage() {
   useLanguage()
   const subjects = useSubjects()
+  const roots = subjects.filter((s) => !s.parentId)
   const recent = useRecentNotes(5)
   const notes = useVault((s) => s.notes)
   const count = (xs: { subjectId: string }[], id: string) => xs.filter((x) => x.subjectId === id).length
@@ -45,9 +46,9 @@ export function HomePage() {
       className="mx-auto w-full max-w-5xl py-8 pr-[max(1rem,var(--safe-right))] pl-[max(1rem,var(--safe-left))] md:px-10 md:py-10"
     >
       <h1 className="text-[28px] leading-tight font-bold tracking-tight md:text-[32px]">{translate("Предметы")}</h1>
-      <p className="mt-1 text-[15px] text-muted-foreground">{plural(subjects.length, ["предмет", "предмета", "предметов"])}</p>
+      <p className="mt-1 text-[15px] text-muted-foreground">{plural(roots.length, ["предмет", "предмета", "предметов"])}</p>
 
-      {!subjects.length && (
+      {!roots.length && (
         <div className="mt-8 rounded-3xl border border-dashed px-6 py-14 text-center">
           <p className="text-[17px] font-semibold">{translate("Нет предметов")}</p>
           <LiquidButton size="xl" className="mt-6 rounded-full font-semibold" onClick={openNewSubject}>
@@ -62,7 +63,7 @@ export function HomePage() {
         animate="show"
         className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
       >
-        {subjects.map((s) => (
+        {roots.map((s) => (
           <motion.li key={s.id} variants={listItem}>
             <SubjectCard subject={s}>
               <SubjectBadge subject={s} size="lg" />

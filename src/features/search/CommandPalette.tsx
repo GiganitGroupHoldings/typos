@@ -1,5 +1,4 @@
 import {
-  BookOpen,
   Eraser,
   FileText,
   Focus,
@@ -30,7 +29,7 @@ import {
   CommandShortcut,
 } from "@/components/ui/Command"
 import { openClearSubjects } from "@/features/subjects/ClearSubjectsDialog"
-import { openNewSubject } from "@/features/subjects/NewSubjectDialog"
+import { openNewSubject } from "@/features/subjects/subjectDialog"
 import { SubjectBadge, toolIcon, toolIcons } from "@/features/subjects/visuals"
 import { relativeTime } from "@/lib/format"
 import type { Subject } from "@/types"
@@ -138,13 +137,6 @@ export function CommandPalette() {
       icon: Pin,
       shortcut: "Ctrl J",
       run: () => ui().setPinsOpen(true),
-    },
-    {
-      id: "reading",
-      label: translate("Режим чтения"),
-      keywords: translate("читать serif"),
-      icon: BookOpen,
-      run: () => ui().toggleReading(),
     },
     {
       id: "focus",

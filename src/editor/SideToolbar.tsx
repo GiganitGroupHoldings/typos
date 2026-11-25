@@ -74,13 +74,11 @@ function DockButton({ item, mouseY }: { item: Item; mouseY: MotionValue<number> 
 
 export function SideToolbar({
   editor,
-  hidden,
   onFormula,
   onBlockFormula,
   onImage,
 }: {
   editor: Editor | null
-  hidden?: boolean
   onFormula: () => void
   onBlockFormula: () => void
   onImage: () => void
@@ -158,11 +156,9 @@ export function SideToolbar({
       role="toolbar"
       aria-label={translate("Форматирование")}
       aria-orientation="vertical"
-      aria-hidden={hidden}
       initial={false}
       animate={{
-        x: hidden ? 24 : pinsOpen ? -356 : 0,
-        opacity: hidden ? 0 : 1,
+        x: pinsOpen ? -356 : 0,
         transition: { type: "spring", stiffness: 320, damping: 32 },
       }}
       onPointerMove={(e) => e.pointerType === "mouse" && mouseY.set(e.clientY)}
@@ -171,7 +167,6 @@ export function SideToolbar({
       className={cn(
         "fixed top-1/2 right-4 z-30 flex -translate-y-1/2 flex-col items-center gap-0.5 rounded-[1.4rem] p-1.5 max-md:hidden",
         lens.className,
-        hidden && "pointer-events-none",
       )}
     >
       {groups.map((g, i) => (

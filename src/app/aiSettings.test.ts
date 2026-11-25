@@ -7,7 +7,6 @@ afterEach(() => {
     aiProvider: "openai",
     aiBaseUrl: "https://api.openai.com/v1",
     aiModel: "gpt-4o-mini",
-    aiBall: null,
   })
 })
 
@@ -36,20 +35,8 @@ it("хранит настройки помощника и чинит мусор 
   })
 })
 
-it("хранит положение шарика помощника и отбрасывает мусор", async () => {
-  useUi.getState().setAiBall({ x: 120.5, y: 340 })
-  expect(useUi.getState().aiBall).toEqual({ x: 120.5, y: 340 })
-
-  useUi.getState().setAiBall({ x: Number.NaN, y: 10 })
-  expect(useUi.getState().aiBall).toBeNull()
-  useUi.getState().setAiBall(null)
-  expect(useUi.getState().aiBall).toBeNull()
-
-  localStorage.setItem("studynotes-ui", JSON.stringify({ version: 2, state: { aiBall: { x: -40, y: 999_999 } } }))
+it("игнорирует ранее сохранённое положение шарика помощника", async () => {
+  localStorage.setItem("studynotes-ui", JSON.stringify({ version: 2, state: { aiBall: { x: 120, y: 340 } } }))
   await useUi.persist.rehydrate()
-  expect(useUi.getState().aiBall).toEqual({ x: 0, y: 100_000 })
-
-  localStorage.setItem("studynotes-ui", JSON.stringify({ version: 2, state: { aiBall: { x: "1", y: 2 } } }))
-  await useUi.persist.rehydrate()
-  expect(useUi.getState().aiBall).toBeNull()
+  expect(useUi.getState()).not.toHaveProperty("aiBall")
 })

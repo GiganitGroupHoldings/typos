@@ -3,6 +3,18 @@ export type BoardSide = "top" | "right" | "bottom" | "left"
 export type BoardEnd = "none" | "arrow"
 export type BoardFrameShape = "rectangle" | "circle" | "hexagon"
 
+export interface BoardToolRef {
+  subjectId: string
+  toolId: string
+}
+
+export interface BoardNoteRef {
+  subjectId: string
+  noteId: string
+  block?: number
+  quote?: string
+}
+
 export interface BoardNode {
   id: string
   type: BoardNodeType
@@ -18,6 +30,10 @@ export interface BoardNode {
   file?: string
 
   url?: string
+
+  /** Ссылка на файл проекта: сам файл остаётся в «Проектах», на доске — только ярлык. */
+  tool?: BoardToolRef
+  note?: BoardNoteRef
 
   label?: string
   shape?: BoardFrameShape
@@ -58,8 +74,26 @@ const TYPES: BoardNodeType[] = ["text", "file", "link", "group"]
 const SIDES: BoardSide[] = ["top", "right", "bottom", "left"]
 
 const COLOR = /^([1-6]|#[0-9a-f]{6})$/i
+const ID = /^[A-Za-z0-9_-]{1,128}$/
 
 export const isBoardColor = (c: unknown): c is string => typeof c === "string" && COLOR.test(c)
+
+/** id приходят из хранилища, но всё равно не пускаем в адрес ничего, кроме букв, цифр и дефиса. */
+export function isBoardToolRef(value: unknown): value is BoardToolRef {
+  if (!value || typeof value !== "object") return false
+  const ref = value as Record<string, unknown>
+  return typeof ref.subjectId === "string" && ID.test(ref.subjectId) && typeof ref.toolId === "string" && ID.test(ref.toolId)
+}
+
+function boardNoteRef(value: unknown): BoardNoteRef | undefined {
+  if (!value || typeof value !== "object") return
+  const { subjectId, noteId, block, quote } = value as Record<string, unknown>
+  if (typeof subjectId !== "string" || !ID.test(subjectId) || typeof noteId !== "string" || !ID.test(noteId)) return
+  if (typeof block === "number" && Number.isSafeInteger(block) && block >= 0 && typeof quote === "string" && quote.trim()) {
+    return { subjectId, noteId, block, quote: quote.slice(0, 100) }
+  }
+  return { subjectId, noteId }
+}
 export const emptyBoard = (): BoardData => ({ nodes: [], edges: [] })
 
 type Raw = Record<string, unknown>
@@ -101,6 +135,8 @@ export function parseBoard(text: string | null): { id?: string; data: BoardData 
       text: type === "text" ? (str(n.text) ?? "") : undefined,
       file: type === "file" || type === "link" ? str(n.file) : undefined,
       url: type === "link" ? str(n.url) : undefined,
+      tool: type === "link" && isBoardToolRef(n.tool) ? { subjectId: n.tool.subjectId, toolId: n.tool.toolId } : undefined,
+      note: type === "text" ? boardNoteRef(n.note) : undefined,
       label: type === "group" || type === "link" ? str(n.label) : undefined,
       shape: type === "group" ? shape(n.shape) : undefined,
     })

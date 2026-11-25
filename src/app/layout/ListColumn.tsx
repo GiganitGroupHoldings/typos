@@ -21,11 +21,13 @@ import { boardText } from "@/features/boards/model"
 import { pickAndImportNotes } from "@/features/import/importFiles"
 import { useFileDrop } from "@/features/import/useFileDrop"
 import { ExportMarkdownButton } from "@/features/notes/ExportMarkdownButton"
+import { NoteTree } from "@/features/notes/NoteTree"
 import { PinActions } from "@/features/pins/PinActions"
 import { PinBody } from "@/features/pins/PinCard"
 import { openPinEditor } from "@/features/pins/PinEditorDialog"
 import { tabOfPath } from "@/features/subjects/tabs"
 import { SubjectBadge, toolIcon } from "@/features/subjects/visuals"
+import { writeToolDrag } from "@/features/tools/drag"
 import { ToolActions } from "@/features/tools/ToolActions"
 import { openToolDialog } from "@/features/tools/ToolDialog"
 import { plural, relativeTime } from "@/lib/format"
@@ -117,7 +119,7 @@ function CreateButton({ subject, tab }: { subject: Subject; tab: SubjectTab }) {
             <ChevronDown />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent align="end" className="w-64 max-w-[calc(100vw-1rem)]">
           <DropdownMenuLabel>{translate("Шаблон")}</DropdownMenuLabel>
           {templates.map((t) => (
             <DropdownMenuItem key={t.id} onSelect={() => createNote(subject.id, t.id)}>
@@ -194,30 +196,35 @@ function SubjectList({ className, onNavigate }: { className?: string; onNavigate
         variants={listParent}
         initial="hidden"
         animate="show"
-        className="thin-scrollbar flex-1 space-y-0.5 overflow-y-auto px-2 pb-4"
+        className="thin-scrollbar stable-scrollbar flex-1 space-y-0.5 overflow-y-auto px-2 pb-4"
       >
-        {tab === "notes" &&
-          notes.map((n) => (
-            <motion.li key={n.id} variants={listItem} className="flex items-center gap-1">
-              <Link
-                data-ui-hover="sidebar-row"
-                to={`/s/${subject.id}/n/${n.id}`}
-                viewTransition
-                onClick={onNavigate}
-                data-active={noteId === n.id || undefined}
-                className="min-w-0 flex-1 rounded-lg px-3 py-2.5 outline-none focus-visible:ring-2 focus-visible:ring-ring data-active:bg-accent"
-              >
-                <div className={cn("truncate text-[14px] font-semibold", !n.title && "text-muted-foreground")}>
-                  {n.title || translate("Без названия")}
-                </div>
-                <div className="mt-0.5 flex gap-2 text-[13px] text-muted-foreground">
-                  <span className="shrink-0 tabular-nums">{relativeTime(n.updated)}</span>
-                  <span className="truncate">{n.excerpt || translate("Нет текста")}</span>
-                </div>
-              </Link>
-              <ExportMarkdownButton note={n} />
-            </motion.li>
-          ))}
+        {tab === "notes" && (
+          <NoteTree
+            notes={notes}
+            activeId={noteId}
+            renderRow={(n) => (
+              <>
+                <Link
+                  data-ui-hover="sidebar-row"
+                  to={`/s/${subject.id}/n/${n.id}`}
+                  viewTransition
+                  onClick={onNavigate}
+                  data-active={noteId === n.id || undefined}
+                  className="min-w-0 flex-1 rounded-lg px-3 py-2.5 outline-none focus-visible:ring-2 focus-visible:ring-ring data-active:bg-accent"
+                >
+                  <div className={cn("truncate text-[14px] font-semibold", !n.title && "text-muted-foreground")}>
+                    {n.title || translate("Без названия")}
+                  </div>
+                  <div className="mt-0.5 flex gap-2 text-[13px] text-muted-foreground">
+                    <span className="shrink-0 tabular-nums">{relativeTime(n.updated)}</span>
+                    <span className="truncate">{n.excerpt || translate("Нет текста")}</span>
+                  </div>
+                </Link>
+                <ExportMarkdownButton note={n} />
+              </>
+            )}
+          />
+        )}
 
         {tab === "pins" &&
           pins.map((p) => {
@@ -267,6 +274,9 @@ function SubjectList({ className, onNavigate }: { className?: string; onNavigate
                   to={`/s/${subject.id}/t/${t.id}`}
                   viewTransition
                   onClick={onNavigate}
+                  draggable
+                  onDragStart={(e) => writeToolDrag(e.dataTransfer, t)}
+                  title={translate("Перетащи на доску")}
                   data-active={toolId === t.id || undefined}
                   className="flex items-center gap-3 rounded-lg py-2.5 pr-10 pl-3 outline-none focus-visible:ring-2 focus-visible:ring-ring data-active:bg-accent"
                 >

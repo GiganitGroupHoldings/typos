@@ -1,7 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react"
 import { useNavigate } from "react-router"
 import { toast } from "sonner"
-import { create } from "zustand"
 import { translate, useLanguage } from "@/app/i18n"
 import { Button } from "@/components/ui/Button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/Dialog"
@@ -11,26 +10,22 @@ import { SUBJECT_COLORS, SUBJECT_ICONS } from "@/lib/subjectPalette"
 import { cn } from "@/lib/utils"
 import type { SubjectColor, SubjectIcon } from "@/types"
 import { useVault } from "@/vault/store"
+import { useSubjectDialog } from "./subjectDialog"
 import { SubjectBadge, subjectIcons } from "./visuals"
-
-const useDialog = create<{ open: boolean; editId?: string; set: (v: boolean, editId?: string) => void }>((set) => ({
-  open: false,
-  set: (open, editId) => set({ open, editId }),
-}))
-export const openNewSubject = () => useDialog.getState().set(true)
-export const openEditSubject = (id: string) => useDialog.getState().set(true, id)
 
 export function NewSubjectDialog() {
   useLanguage()
-  const open = useDialog((s) => s.open)
-  const editId = useDialog((s) => s.editId)
-  const setOpen = (v: boolean) => useDialog.getState().set(v, v ? editId : undefined)
+  const open = useSubjectDialog((s) => s.open)
+  const editId = useSubjectDialog((s) => s.editId)
+  const parentId = useSubjectDialog((s) => s.parentId)
+  const setOpen = (v: boolean) => useSubjectDialog.getState().set(v, v ? editId : undefined, v ? parentId : undefined)
   const editing = useVault((s) => s.subjects.find((x) => x.id === editId))
   const createSubject = useVault((s) => s.createSubject)
   const updateSubject = useVault((s) => s.updateSubject)
   const navigate = useNavigate()
   const [name, setName] = useState("")
   const [color, setColor] = useState<SubjectColor>("blue")
+  const [customColor, setCustomColor] = useState<string>()
   const [icon, setIcon] = useState<SubjectIcon>("book")
   const [busy, setBusy] = useState(false)
 
@@ -38,6 +33,7 @@ export function NewSubjectDialog() {
     if (!open) return
     setName(editing?.name ?? "")
     setColor(editing?.color ?? "blue")
+    setCustomColor(editing?.customColor)
     setIcon(editing?.icon ?? "book")
   }, [open, editing])
 
@@ -47,10 +43,10 @@ export function NewSubjectDialog() {
     setBusy(true)
     try {
       if (editing) {
-        await updateSubject(editing.id, { name: name.trim(), color, icon })
+        await updateSubject(editing.id, { name: name.trim(), color, customColor, icon })
         setOpen(false)
       } else {
-        const s = await createSubject({ name: name.trim(), color, icon })
+        const s = await createSubject({ name: name.trim(), color, customColor, icon }, parentId)
         setOpen(false)
         navigate(`/s/${s.id}`)
       }
@@ -68,11 +64,13 @@ export function NewSubjectDialog() {
       <DialogContent aria-describedby={undefined} className="sm:max-w-md">
         <form onSubmit={submit} className="contents">
           <DialogHeader>
-            <DialogTitle>{editing ? translate("Изменить предмет") : translate("Новый предмет")}</DialogTitle>
+            <DialogTitle>
+              {editing ? translate("Изменить предмет") : parentId ? translate("Новая подпапка") : translate("Новый предмет")}
+            </DialogTitle>
           </DialogHeader>
 
           <div className="flex items-center gap-3">
-            <SubjectBadge subject={{ id: "", name, color, icon, order: 0, dir: "" }} size="lg" />
+            <SubjectBadge subject={{ id: "", name, color, customColor, icon, order: 0, dir: "" }} size="lg" />
             <div className="flex-1">
               <label htmlFor="subject-name" className="mb-1 block text-[13px] font-medium">
                 {translate("Название")}
@@ -97,16 +95,28 @@ export function NewSubjectDialog() {
                   type="button"
                   aria-label={translate(colorName)}
                   title={translate(colorName)}
-                  aria-pressed={color === c}
-                  onClick={() => setColor(c)}
+                  aria-pressed={!customColor && color === c}
+                  onClick={() => {
+                    setColor(c)
+                    setCustomColor(undefined)
+                  }}
                   style={{ background: `var(--subject-${c})` }}
                   className={cn(
                     "size-8 rounded-full outline-none transition-transform duration-(--dur-fast) focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-95",
-                    color === c && "ring-2 ring-foreground/70 ring-offset-2 ring-offset-background",
+                    !customColor && color === c && "ring-2 ring-foreground/70 ring-offset-2 ring-offset-background",
                   )}
                 />
               ))}
             </div>
+            <label className="mt-3 flex w-fit items-center gap-2 text-[13px]">
+              <input
+                type="color"
+                value={customColor ?? "#ff6500"}
+                onChange={(e) => setCustomColor(e.target.value)}
+                className="h-8 w-10 cursor-pointer rounded-md border bg-background p-0.5"
+              />
+              {translate("Свой цвет")}
+            </label>
           </fieldset>
 
           <fieldset>

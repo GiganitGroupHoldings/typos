@@ -12,13 +12,12 @@ import type { RemoteConfig } from "@/storage/remoteLink"
 import { resetSyncState, SyncedAdapter } from "@/storage/syncedAdapter"
 import { forgetPath, loadSavedPath, pickFolderPath, savePath, TauriAdapter } from "@/storage/tauriAdapter"
 import { dirname, type VaultAdapter } from "@/storage/VaultAdapter"
-import type { Board, Note, Pin, Subject, SubjectColor, SubjectIcon, Tool, ToolIcon } from "@/types"
+import type { Board, Note, Pin, Subject, SubjectInput, Tool, ToolIcon } from "@/types"
 import { extractExcerpt, extractTitle, sameBody } from "./format"
 import { mergeText } from "./mergeText"
 import * as repo from "./repo"
 
 type Status = "loading" | "ready" | "needs-permission" | "error"
-type SubjectInput = { name: string; color: SubjectColor; icon: SubjectIcon }
 
 type Undo = () => Promise<void>
 
@@ -39,12 +38,12 @@ interface VaultState extends repo.VaultData {
   switchToBrowser: () => Promise<void>
 
   copyToFolder: () => Promise<{ copied: number; folder: string } | null>
-  createSubject: (input: SubjectInput) => Promise<Subject>
+  createSubject: (input: SubjectInput, parentId?: string) => Promise<Subject>
   updateSubject: (id: string, input: SubjectInput) => Promise<void>
   trashSubject: (id: string) => Promise<Undo>
 
   trashSubjects: (ids: string[]) => Promise<Undo>
-  createNote: (subjectId: string, body?: string) => Promise<Note>
+  createNote: (subjectId: string, body?: string, parentNoteId?: string) => Promise<Note>
 
   importNotes: (subjectId: string, files: File[]) => Promise<Note[]>
 
@@ -53,6 +52,7 @@ interface VaultState extends repo.VaultData {
   adoptNote: (id: string, body: string) => void
 
   noteBase: (id: string) => string | undefined
+  renameNote: (id: string, title: string) => Promise<void>
   trashNote: (id: string) => Promise<Undo>
 
   loadNoteMap: (noteId: string) => Promise<NoteMap>
@@ -70,7 +70,7 @@ interface VaultState extends repo.VaultData {
   importProjectFile: (subjectId: string, input: { name: string; blob: Blob; title?: string; icon?: ToolIcon }) => Promise<Tool>
   updateTool: (id: string, input: { name: string; icon: ToolIcon }) => Promise<void>
   trashTool: (id: string) => Promise<Undo>
-  createBoard: (subjectId: string, name?: string) => Promise<Board>
+  createBoard: (subjectId: string, name?: string, data?: BoardData) => Promise<Board>
 
   saveBoard: (id: string, data: BoardData) => Promise<BoardData | null>
 
@@ -282,9 +282,12 @@ export const useVault = create<VaultState>()((set, get) => {
       await open(browserAdapter())
     },
 
-    async createSubject(input) {
-      const order = Math.max(-1, ...get().subjects.map((s) => s.order)) + 1
-      const subject = await repo.createSubject(need(), input, order)
+    async createSubject(input, parentId) {
+      const subjects = get().subjects
+      const parent = subjects.find((s) => s.id === parentId)
+      if (parentId && !parent) throw new Error(translate("Предмет не найден"))
+      const order = Math.max(-1, ...subjects.filter((s) => s.parentId === parentId).map((s) => s.order)) + 1
+      const subject = await repo.createSubject(need(), input, order, parent)
       set((s) => ({ subjects: [...s.subjects, subject] }))
       return subject
     },
@@ -307,7 +310,8 @@ export const useVault = create<VaultState>()((set, get) => {
       const a = need()
       await idle()
       const moved: { trashPath: string; dir: string }[] = []
-      for (const s of get().subjects.filter((x) => ids.includes(x.id))) {
+      const selected = get().subjects.filter((s) => ids.includes(s.id))
+      for (const s of selected.filter((s) => !selected.some((parent) => s.dir.startsWith(`${parent.dir}/`)))) {
         moved.push({ trashPath: await repo.trashEntry(a, s.dir), dir: s.dir })
       }
       await reload()
@@ -317,10 +321,13 @@ export const useVault = create<VaultState>()((set, get) => {
       }
     },
 
-    async createNote(subjectId, body) {
+    async createNote(subjectId, body, parentNoteId) {
       const subject = get().subjects.find((s) => s.id === subjectId)
       if (!subject) throw new Error(translate("Предмет не найден"))
-      const note = await repo.createNote(need(), subject, body)
+      if (parentNoteId && !get().notes.some((n) => n.id === parentNoteId && n.subjectId === subjectId)) {
+        throw new Error(translate("Конспект не найден"))
+      }
+      const note = await repo.createNote(need(), subject, body, parentNoteId)
       set((s) => ({ notes: [note, ...s.notes] }))
       return note
     },
@@ -346,7 +353,8 @@ export const useVault = create<VaultState>()((set, get) => {
           const disk = await repo.readNoteBody(a, note.path)
           if (disk !== null && sameBody(disk, body)) {
             bases.set(id, body)
-            if (note.body !== body) replaceNote({ ...note, body, title: extractTitle(body), excerpt: extractExcerpt(body) })
+            if (note.body !== body)
+              replaceNote({ ...note, body, title: note.meta.noteTitle || extractTitle(body), excerpt: extractExcerpt(body) })
             return body
           }
           const base = bases.get(id) ?? note.body
@@ -370,7 +378,7 @@ export const useVault = create<VaultState>()((set, get) => {
     discardIfEmpty(id) {
       return enqueue(id, async () => {
         const note = get().notes.find((n) => n.id === id)
-        if (!note || !isBlank(note.body)) return
+        if (!note || note.meta.noteTitle || !isBlank(note.body)) return
         await need().remove(note.path)
         set((s) => ({ notes: s.notes.filter((n) => n.id !== id) }))
       })
@@ -388,6 +396,14 @@ export const useVault = create<VaultState>()((set, get) => {
         await repo.saveNoteMap(need(), note, map)
         const text = mapText(map) || undefined
         if (text !== note.mapText) set((s) => ({ notes: s.notes.map((n) => (n.id === noteId ? { ...n, mapText: text } : n)) }))
+      })
+    },
+
+    renameNote(id, title) {
+      return enqueue(id, async () => {
+        const note = get().notes.find((n) => n.id === id)
+        if (!note) throw new Error(translate("Конспект не найден"))
+        replaceNote(await repo.renameNote(need(), note, title))
       })
     },
 
@@ -486,13 +502,18 @@ export const useVault = create<VaultState>()((set, get) => {
       return tool ? trashWithUndo(tool.path) : async () => {}
     },
 
-    async createBoard(subjectId, name = translate("Новая доска")) {
+    async createBoard(subjectId, name = translate("Новая доска"), data) {
       const subject = get().subjects.find((s) => s.id === subjectId)
       if (!subject) throw new Error(translate("Предмет не найден"))
-      const board = await repo.createBoard(need(), subject, name)
-      boardBases.set(board.id, serializeBoard(board.id, board.data))
-      set((s) => ({ boards: [...s.boards, board].sort((x, y) => x.name.localeCompare(y.name, "ru")) }))
-      return board
+      const adapter = need()
+      return enqueue(`create-board:${subjectId}`, async () => {
+        const board = await repo.createBoard(adapter, subject, name, data)
+        if (get().adapter === adapter) {
+          boardBases.set(board.id, serializeBoard(board.id, board.data))
+          set((s) => ({ boards: [...s.boards, board].sort((x, y) => x.name.localeCompare(y.name, "ru")) }))
+        }
+        return board
+      })
     },
 
     saveBoard(id, data) {

@@ -3,9 +3,9 @@ import { mapText, parseNoteMap, serializeNoteMap, type NoteMap } from "@/editor/
 import { normalizeMarkdownMath } from "@/editor/texImport"
 import { BOARD_EXT, emptyBoard, parseBoard, serializeBoard, type BoardData } from "@/features/boards/model"
 import { pinUrl } from "@/lib/pins"
-import { SUBJECT_COLOR_IDS, SUBJECT_ICON_IDS } from "@/lib/subjectPalette"
+import { SUBJECT_COLOR_IDS, SUBJECT_ICON_IDS, validCustomColor } from "@/lib/subjectPalette"
 import { basename, dirname, fileExt, fileTitle, joinPath, safeName, uniquePath, type VaultAdapter } from "@/storage/VaultAdapter"
-import type { Board, Note, Pin, Subject, SubjectColor, SubjectIcon, Tool, ToolIcon } from "@/types"
+import type { Board, Note, Pin, Subject, SubjectColor, SubjectIcon, SubjectInput, Tool, ToolIcon } from "@/types"
 import {
   BOARDS_DIR,
   extractExcerpt,
@@ -20,6 +20,7 @@ import {
   PROJECTS_DIR,
   serializeFrontmatter,
   serializePinBody,
+  SUBFOLDERS_DIR,
   SUBJECT_META,
   TOOLS_DIR,
   TRASH_DIR,
@@ -39,10 +40,10 @@ const TOOL_ICONS: ToolIcon[] = ["grid", "chart", "ruler", "binary", "calculator"
 
 export async function loadVault(a: VaultAdapter): Promise<VaultData> {
   const data: VaultData = { subjects: [], notes: [], pins: [], tools: [], boards: [] }
-  const roots = (await a.list("")).filter((e) => e.kind === "dir" && !e.name.startsWith("."))
-
-  for (const [i, root] of roots.entries()) data.subjects.push(await readSubject(a, root.name, i))
+  for await (const { dir, index } of subjectDirs(a)) data.subjects.push(await readSubject(a, dir, index))
   data.subjects = uniqueIds(data.subjects, (s) => s.dir)
+  const idsByDir = new Map(data.subjects.map((s) => [s.dir, s.id]))
+  for (const s of data.subjects) s.parentId = idsByDir.get(dirname(dirname(s.dir)))
 
   for (const subject of data.subjects) {
     const maps = new Map<string, string>()
@@ -96,6 +97,16 @@ export async function loadVault(a: VaultAdapter): Promise<VaultData> {
   return data
 }
 
+async function* subjectDirs(a: VaultAdapter, parentDir = ""): AsyncGenerator<{ dir: string; index: number }> {
+  const base = parentDir ? joinPath(parentDir, SUBFOLDERS_DIR) : ""
+  const entries = (await a.list(base)).filter((entry) => entry.kind === "dir" && !entry.name.startsWith("."))
+  for (const [index, entry] of entries.entries()) {
+    const dir = joinPath(base, entry.name)
+    yield { dir, index }
+    yield* subjectDirs(a, dir)
+  }
+}
+
 async function readSubject(a: VaultAdapter, dir: string, index: number): Promise<Subject> {
   let meta: Partial<Subject> = {}
   try {
@@ -103,9 +114,10 @@ async function readSubject(a: VaultAdapter, dir: string, index: number): Promise
   } catch {}
   const subject: Subject = {
     id: meta.id || genId(),
-    name: dir,
+    name: basename(dir),
     dir,
     color: COLORS.includes(meta.color!) ? meta.color! : COLORS[index % COLORS.length],
+    customColor: validCustomColor(meta.customColor),
     icon: ICONS.includes(meta.icon!) ? meta.icon! : "book",
     order: typeof meta.order === "number" ? meta.order : index,
   }
@@ -115,8 +127,8 @@ async function readSubject(a: VaultAdapter, dir: string, index: number): Promise
 }
 
 export function writeSubjectMeta(a: VaultAdapter, s: Subject) {
-  const { id, color, icon, order } = s
-  return a.writeText(joinPath(s.dir, SUBJECT_META), JSON.stringify({ id, color, icon, order }, null, 2) + "\n")
+  const { id, color, customColor, icon, order } = s
+  return a.writeText(joinPath(s.dir, SUBJECT_META), JSON.stringify({ id, color, customColor, icon, order }, null, 2) + "\n")
 }
 
 async function readFiles(a: VaultAdapter, dir: string, ext: string, cb: (path: string, text: string) => Promise<void>) {
@@ -203,7 +215,7 @@ export function noteFromFile(subjectId: string, path: string, text: string): Not
     id: id || pathId(path),
     subjectId,
     path,
-    title: extractTitle(body) || basename(path).replace(/\.md$/, ""),
+    title: rest.noteTitle || extractTitle(body) || basename(path).replace(/\.md$/, ""),
     created: created || updated || fallback,
     updated: updated || created || fallback,
     excerpt: extractExcerpt(body),
@@ -216,7 +228,7 @@ function noteFile(n: Note) {
   return serializeFrontmatter({ id: n.id, created: n.created, updated: n.updated, ...n.meta }, n.body)
 }
 
-export async function createNote(a: VaultAdapter, subject: Subject, body = ""): Promise<Note> {
+export async function createNote(a: VaultAdapter, subject: Subject, body = "", parentNoteId?: string): Promise<Note> {
   const now = new Date().toISOString()
   const dir = joinPath(subject.dir, NOTES_DIR)
   const title = extractTitle(body)
@@ -230,7 +242,7 @@ export async function createNote(a: VaultAdapter, subject: Subject, body = ""): 
     updated: now,
     excerpt: extractExcerpt(body),
     body,
-    meta: {},
+    meta: parentNoteId ? { parentNoteId } : {},
   }
   await a.writeText(path, noteFile(note))
   return note
@@ -286,18 +298,30 @@ export async function readNoteBody(a: VaultAdapter, path: string): Promise<strin
 }
 
 export async function saveNote(a: VaultAdapter, note: Note, body: string): Promise<Note> {
-  const title = extractTitle(body)
+  const title = note.meta.noteTitle || extractTitle(body)
   const next: Note = { ...note, body, title, excerpt: extractExcerpt(body), updated: new Date().toISOString() }
   const wantedBase = safeName(title)
   const currentBase = basename(note.path)
     .replace(/\.md$/, "")
     .replace(/ \(\d+\)$/, "")
-  if (wantedBase !== currentBase) {
+  if (!note.meta.noteTitle && wantedBase !== currentBase) {
     next.path = await uniquePath(a, dirname(note.path), wantedBase, ".md", note.path)
   }
   await a.writeText(next.path, noteFile(next))
   if (next.path !== note.path) await a.remove(note.path)
   return next
+}
+
+export async function renameNote(a: VaultAdapter, note: Note, name: string): Promise<Note> {
+  const title = name.replace(/[\r\n]+/g, " ").trim()
+  if (!title || title === note.title) return note
+  const text = await a.readText(note.path)
+  if (text === null) throw new Error(translate("Конспект не найден"))
+  const { meta, body } = parseFrontmatter(text)
+  // Отдельное имя сохраняет первый абзац и пути к вложениям.
+  const renamed = serializeFrontmatter({ id: note.id, created: note.created, updated: note.updated, ...meta, noteTitle: title }, body)
+  await a.writeText(note.path, renamed)
+  return { ...note, ...noteFromFile(note.subjectId, note.path, renamed), id: note.id }
 }
 
 const TRASH_SEP = " › "
@@ -340,6 +364,7 @@ export async function listTrash(a: VaultAdapter): Promise<TrashItem[]> {
     const [, stamp, rest] = m
     const originalPath = rest.split(TRASH_SEP).join("/")
     const parts = originalPath.split("/")
+    while (parts[1] === SUBFOLDERS_DIR) parts.splice(0, 2)
     const kind: TrashKind =
       parts.length === 1
         ? "subject"
@@ -566,28 +591,22 @@ export async function saveBoardImage(a: VaultAdapter, board: Pick<Board, "path">
   return joinPath(dir, await saveAsset(a, dir, file))
 }
 
-export async function updateSubject(
-  a: VaultAdapter,
-  subject: Subject,
-  input: { name: string; color: SubjectColor; icon: SubjectIcon },
-): Promise<Subject> {
+export async function updateSubject(a: VaultAdapter, subject: Subject, input: SubjectInput): Promise<Subject> {
   let dir = subject.dir
-  const base = safeName(input.name, subject.name)
-  if (base !== subject.dir) {
-    dir = base
-    for (let i = 2; await a.exists(dir); i++) dir = `${base} (${i})`
+  const base = subjectName(input.name, subject.name)
+  if (base !== basename(subject.dir)) {
+    dir = await uniquePath(a, dirname(subject.dir), base, "")
     await a.move(subject.dir, dir)
   }
-  const next: Subject = { ...subject, dir, name: dir, color: input.color, icon: input.icon }
+  const next: Subject = { ...subject, ...input, dir, name: basename(dir), customColor: validCustomColor(input.customColor) }
   await writeSubjectMeta(a, next)
   return next
 }
 
 export async function countNotes(a: VaultAdapter) {
   let n = 0
-  for (const root of await a.list("")) {
-    if (root.kind !== "dir" || root.name.startsWith(".")) continue
-    n += (await a.list(joinPath(root.name, NOTES_DIR))).filter((e) => e.kind === "file" && e.name.endsWith(".md")).length
+  for await (const { dir } of subjectDirs(a)) {
+    n += (await a.list(joinPath(dir, NOTES_DIR))).filter((e) => e.kind === "file" && e.name.endsWith(".md")).length
   }
   return n
 }
@@ -610,15 +629,22 @@ export async function copyVault(from: VaultAdapter, to: VaultAdapter, dir = "", 
   return copied
 }
 
-export async function createSubject(
-  a: VaultAdapter,
-  input: { name: string; color: SubjectColor; icon: SubjectIcon },
-  order: number,
-): Promise<Subject> {
-  const base = safeName(input.name, "Новый предмет")
-  let dir = base
-  for (let i = 2; await a.exists(dir); i++) dir = `${base} (${i})`
-  const subject: Subject = { id: genId(), name: dir, dir, color: input.color, icon: input.icon, order }
+function subjectName(name: string, fallback: string) {
+  return safeName(name.replace(/^\s*\.+/, ""), fallback)
+}
+
+export async function createSubject(a: VaultAdapter, input: SubjectInput, order: number, parent?: Subject): Promise<Subject> {
+  const base = subjectName(input.name, translate("Новый предмет"))
+  const dir = await uniquePath(a, parent ? joinPath(parent.dir, SUBFOLDERS_DIR) : "", base, "")
+  const subject: Subject = {
+    ...input,
+    id: genId(),
+    name: basename(dir),
+    dir,
+    customColor: validCustomColor(input.customColor),
+    order,
+    parentId: parent?.id,
+  }
   await writeSubjectMeta(a, subject)
   return subject
 }
